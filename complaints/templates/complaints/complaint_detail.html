@@ -1,0 +1,84 @@
+{% extends "complaints/base.html" %}
+{% block title %}{{ complaint.code }} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>{{ complaint.code }}</h1>
+<p>
+    <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+    <span class="badge badge-{{ complaint.severity }}">{{ complaint.get_severity_display }}</span>
+    {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat SLA</span>{% endif %}
+</p>
+
+<div class="card" style="border-top-color:var(--maroon);background:#FBF3E3;">
+    <h2 style="margin-top:0;">Kontak Pelanggan</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+        <div>
+            <div style="color:var(--text-muted);font-size:0.8rem;">Nama</div>
+            <div style="font-weight:700;color:var(--maroon);font-size:1.1rem;">{{ complaint.customer_name }}</div>
+        </div>
+        <div>
+            <div style="color:var(--text-muted);font-size:0.8rem;">No. HP / WhatsApp</div>
+            <div style="font-weight:700;color:var(--maroon);font-size:1.1rem;"><a href="tel:{{ complaint.customer_phone }}">{{ complaint.customer_phone }}</a></div>
+        </div>
+        {% if complaint.customer_email %}
+        <div>
+            <div style="color:var(--text-muted);font-size:0.8rem;">Email</div>
+            <div style="font-weight:700;color:var(--maroon);font-size:1.1rem;"><a href="mailto:{{ complaint.customer_email }}">{{ complaint.customer_email }}</a></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>Informasi Komplain</h2>
+    <table>
+        <tr><th style="width:220px;">Cabang</th><td>{{ complaint.branch.name }}</td></tr>
+        <tr><th>Meja / Pesanan</th><td>Meja {{ complaint.table_number|default:"-" }} &middot; {{ complaint.order_number|default:"-" }}</td></tr>
+        <tr><th>Kategori</th><td>{{ complaint.get_category_display }}</td></tr>
+        <tr><th>Deskripsi</th><td>{{ complaint.description }}</td></tr>
+        {% if complaint.photo_evidence %}
+        <tr><th>Foto Bukti</th><td><img src="{{ complaint.photo_evidence.url }}" style="max-width:280px;border-radius:8px;"></td></tr>
+        {% endif %}
+        <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Batas SLA</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}
+            <div class="progress-bar-bg"><div class="progress-bar-fill {% if complaint.is_overdue %}overdue{% endif %}" style="width:{{ complaint.sla_progress_percent }}%;"></div></div>
+        </td></tr>
+        {% if complaint.satisfaction_rating %}
+        <tr><th>Rating Pelanggan</th><td>{{ complaint.satisfaction_rating }} / 5 &middot; {{ complaint.satisfaction_feedback|default:"-" }}</td></tr>
+        {% endif %}
+    </table>
+</div>
+
+{% if can_edit %}
+<div class="card">
+    <h2>Perbarui Penanganan</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.status.label_tag }}{{ form.status }}
+        {{ form.severity.label_tag }}{{ form.severity }}
+        {{ form.assigned_to.label_tag }}{{ form.assigned_to }}
+        {{ form.resolution_notes.label_tag }}{{ form.resolution_notes }}
+        {{ form.internal_notes.label_tag }}{{ form.internal_notes }}
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Riwayat Status</h2>
+    <table>
+        <thead><tr><th>Waktu</th><th>Status</th><th>Catatan</th><th>Oleh</th></tr></thead>
+        <tbody>
+        {% for entry in timeline %}
+            <tr>
+                <td>{{ entry.created_at|date:"d M Y H:i" }}</td>
+                <td>{{ entry.old_status|default:"-" }} &rarr; {{ entry.new_status }}</td>
+                <td>{{ entry.note|default:"-" }}</td>
+                <td>{{ entry.changed_by|default:"Sistem" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

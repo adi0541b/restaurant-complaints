@@ -1,0 +1,39 @@
+{% extends "complaints/base.html" %}
+{% block title %}{% if is_create %}Tambah User{% else %}Edit User{% endif %} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>{% if is_create %}Tambah User Baru{% else %}Edit User: {{ user_obj.username }}{% endif %}</h1>
+<p class="subtitle"><a href="{% url 'complaints:user_list' %}">&larr; Kembali ke Daftar User</a></p>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.username.label_tag }}{{ form.username }}
+        {{ form.first_name.label_tag }}{{ form.first_name }}
+        {{ form.last_name.label_tag }}{{ form.last_name }}
+        {{ form.email.label_tag }}{{ form.email }}
+
+        <h3>Peran &amp; Cabang</h3>
+        {{ form.role.label_tag }}{{ form.role }}
+        {{ form.branch.label_tag }}{{ form.branch }}
+        {% if form.branch.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.branch.help_text }}</p>{% endif %}
+        {{ form.phone.label_tag }}{{ form.phone }}
+
+        {% if is_create %}
+            <h3>Password</h3>
+            {{ form.password1.label_tag }}{{ form.password1 }}
+            {{ form.password2.label_tag }}{{ form.password2 }}
+        {% else %}
+            <h3>Ubah Password (opsional)</h3>
+            {{ form.new_password.label_tag }}{{ form.new_password }}
+            {% if form.new_password.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.new_password.help_text }}</p>{% endif %}
+            <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
+                {{ form.is_active }} <span style="font-weight:normal;">Akun Aktif</span>
+            </label>
+        {% endif %}
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">{% if is_create %}Buat Akun{% else %}Simpan Perubahan{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

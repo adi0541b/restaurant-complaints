@@ -1,0 +1,43 @@
+{% extends "complaints/base.html" %}
+{% block title %}Cek Status Komplain - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Cek Status Komplain</h1>
+    <p class="subtitle">Masukkan kode komplain dan nomor HP yang Anda gunakan saat melapor.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.code.label_tag }}{{ form.code }}
+        {{ form.customer_phone.label_tag }}{{ form.customer_phone }}
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary">Cek Status</button>
+        </div>
+    </form>
+</div>
+
+{% if complaint %}
+<div class="card">
+    <h2>{{ complaint.code }}</h2>
+    <p>
+        <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+        <span class="badge badge-{{ complaint.severity }}">{{ complaint.get_severity_display }}</span>
+        {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat SLA</span>{% endif %}
+    </p>
+    <table>
+        <tr><th>Cabang</th><td>{{ complaint.branch.name }}</td></tr>
+        <tr><th>Kategori</th><td>{{ complaint.get_category_display }}</td></tr>
+        <tr><th>Deskripsi</th><td>{{ complaint.description }}</td></tr>
+        <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Batas SLA</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}</td></tr>
+        {% if complaint.resolution_notes %}
+        <tr><th>Catatan Penyelesaian</th><td>{{ complaint.resolution_notes }}</td></tr>
+        {% endif %}
+    </table>
+
+    {% if complaint.status == 'selesai' and not complaint.satisfaction_rating %}
+    <div style="margin-top:16px;">
+        <a href="{% url 'complaints:satisfaction_rating' complaint.code %}" class="btn btn-gold">Beri Penilaian Kepuasan</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

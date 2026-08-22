@@ -1,0 +1,25 @@
+{% extends "complaints/base.html" %}
+{% block title %}{% if is_create %}Tambah Cabang{% else %}Edit Cabang{% endif %} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>{% if is_create %}Tambah Cabang Baru{% else %}Edit Cabang: {{ branch.name }}{% endif %}</h1>
+<p class="subtitle"><a href="{% url 'complaints:branch_list' %}">&larr; Kembali ke Daftar Cabang</a></p>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.name.label_tag }}{{ form.name }}
+        {{ form.code.label_tag }}{{ form.code }}
+        {{ form.city.label_tag }}{{ form.city }}
+        {{ form.address.label_tag }}{{ form.address }}
+        {{ form.phone.label_tag }}{{ form.phone }}
+        {{ form.manager.label_tag }}{{ form.manager }}
+        <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
+            {{ form.is_active }} <span style="font-weight:normal;">Cabang Aktif</span>
+        </label>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">{% if is_create %}Tambah Cabang{% else %}Simpan Perubahan{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

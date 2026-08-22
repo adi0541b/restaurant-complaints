@@ -1,0 +1,17 @@
+{% extends "complaints/base.html" %}
+{% block title %}Login Staff - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:0 auto;">
+    <h1>Login Staff / Manager / Admin</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="id_username">Username</label>
+        <input type="text" name="username" id="id_username" class="form-control" required>
+        <label for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" class="form-control" required>
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary" style="width:100%;">Masuk</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

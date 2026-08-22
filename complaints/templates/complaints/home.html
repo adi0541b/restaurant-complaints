@@ -1,0 +1,36 @@
+{% extends "complaints/base.html" %}
+{% block title %}Lapor Komplain - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Sampaikan Komplain Anda</h1>
+    <p class="subtitle">Kami mohon maaf atas ketidaknyamanan yang Anda alami. Silakan isi form di bawah, tim kami akan segera menindaklanjuti.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <h3 style="margin-top:0;">Data Anda</h3>
+        {{ form.customer_name.label_tag }}{{ form.customer_name }}
+        {{ form.customer_phone.label_tag }}{{ form.customer_phone }}
+        {{ form.customer_email.label_tag }}{{ form.customer_email }}
+
+        <h3>Detail Kunjungan</h3>
+        {{ form.branch.label_tag }}{{ form.branch }}
+        {{ form.table_number.label_tag }}{{ form.table_number }}
+        {{ form.visit_date.label_tag }}{{ form.visit_date }}
+        {{ form.order_number.label_tag }}{{ form.order_number }}
+
+        <h3>Detail Komplain</h3>
+        {{ form.category.label_tag }}{{ form.category }}
+        {{ form.severity.label_tag }}{{ form.severity }}
+        {{ form.description.label_tag }}{{ form.description }}
+        {{ form.photo_evidence.label_tag }}{{ form.photo_evidence }}
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">Kirim Komplain</button>
+        </div>
+    </form>
+</div>
+<p style="text-align:center;color:var(--text-muted);font-size:0.85rem;">
+    Tips: Scan QR code di meja Anda agar cabang &amp; nomor meja terisi otomatis.
+</p>
+{% endblock %}

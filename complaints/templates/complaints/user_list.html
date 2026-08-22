@@ -1,0 +1,31 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kelola User - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Kelola User</h1>
+    <a href="{% url 'complaints:user_create' %}" class="btn btn-primary">+ Tambah User Baru</a>
+</div>
+<p class="subtitle"><a href="{% url 'complaints:admin_panel' %}">&larr; Kembali ke Panel Admin</a></p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Username</th><th>Nama</th><th>Peran</th><th>Cabang</th><th>Aktif</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.get_full_name|default:"-" }}</td>
+                <td>{% if u.staff_profile %}{{ u.staff_profile.get_role_display }}{% else %}<span style="color:var(--text-muted);">Belum diatur</span>{% endif %}</td>
+                <td>{{ u.staff_profile.branch.name|default:"Semua Cabang" }}</td>
+                <td>{% if u.is_active %}✅{% else %}❌{% endif %}</td>
+                <td><a href="{% url 'complaints:user_edit' u.pk %}" class="btn btn-outline">Edit</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">Belum ada user.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

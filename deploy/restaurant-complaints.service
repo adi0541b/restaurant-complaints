@@ -1,0 +1,36 @@
+# Template systemd service untuk menjalankan aplikasi Django lewat Gunicorn.
+#
+# CARA PAKAI:
+# 1. Sesuaikan semua path (User, WorkingDirectory, Environment, ExecStart)
+#    dengan lokasi project Anda yang sebenarnya di server.
+# 2. Salin file ini ke: /etc/systemd/system/restaurant-complaints.service
+# 3. Jalankan:
+#      systemctl daemon-reload
+#      systemctl enable restaurant-complaints
+#      systemctl start restaurant-complaints
+#      systemctl status restaurant-complaints
+#
+# Ganti "webuzo_user" di bawah dengan username sistem/akun hosting Anda
+# di Webuzo (biasanya sama dengan nama akun website di panel).
+
+[Unit]
+Description=Gunicorn - Aplikasi Komplain Restoran (Django)
+After=network.target
+
+[Service]
+User=webuzo_user
+Group=webuzo_user
+WorkingDirectory=/home/webuzo_user/public_html/restaurant_complaints
+Environment="PATH=/home/webuzo_user/public_html/restaurant_complaints/venv/bin"
+EnvironmentFile=/home/webuzo_user/public_html/restaurant_complaints/.env
+ExecStart=/home/webuzo_user/public_html/restaurant_complaints/venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8001 \
+    --access-logfile /home/webuzo_user/public_html/restaurant_complaints/logs/gunicorn-access.log \
+    --error-logfile /home/webuzo_user/public_html/restaurant_complaints/logs/gunicorn-error.log \
+    restaurant_complaints.wsgi:application
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

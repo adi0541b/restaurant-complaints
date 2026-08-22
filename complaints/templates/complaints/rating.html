@@ -1,0 +1,22 @@
+{% extends "complaints/base.html" %}
+{% block title %}Beri Penilaian - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Bagaimana pengalaman Anda?</h1>
+    <p class="subtitle">Penilaian Anda membantu kami meningkatkan layanan untuk komplain {{ complaint.code }}.</p>
+    <form method="post">
+        {% csrf_token %}
+        <label>Rating Kepuasan</label>
+        <div class="star-rating">
+            {% for radio in form.satisfaction_rating %}
+                {{ radio.tag }}
+                <label for="{{ radio.id_for_label }}">{{ radio.choice_label }} &#9733;</label>
+            {% endfor %}
+        </div>
+        {{ form.satisfaction_feedback.label_tag }}{{ form.satisfaction_feedback }}
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary">Kirim Penilaian</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

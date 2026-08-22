@@ -1,0 +1,24 @@
+{% extends "complaints/base.html" %}
+{% block title %}Panel Admin Pusat - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Panel Admin Pusat</h1>
+<p class="subtitle">Kelola akun pengguna, cabang, dan identitas perusahaan.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;">
+    <div class="card">
+        <h2 style="margin-top:0;">👤 Kelola User</h2>
+        <p style="color:var(--text-muted);">{{ total_users }} akun terdaftar (Staff, Manager, Admin Pusat).</p>
+        <a href="{% url 'complaints:user_list' %}" class="btn btn-primary">Buka Daftar User</a>
+    </div>
+    <div class="card">
+        <h2 style="margin-top:0;">🏬 Kelola Cabang</h2>
+        <p style="color:var(--text-muted);">{{ total_branches }} cabang terdaftar.</p>
+        <a href="{% url 'complaints:branch_list' %}" class="btn btn-primary">Buka Daftar Cabang</a>
+    </div>
+    <div class="card">
+        <h2 style="margin-top:0;">🏢 Identitas Perusahaan</h2>
+        <p style="color:var(--text-muted);">Ubah nama perusahaan dan logo yang tampil di seluruh aplikasi.</p>
+        <a href="{% url 'complaints:site_settings_edit' %}" class="btn btn-primary">Ubah Nama &amp; Logo</a>
+    </div>
+</div>
+{% endblock %}

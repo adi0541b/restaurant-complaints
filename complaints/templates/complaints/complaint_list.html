@@ -1,0 +1,65 @@
+{% extends "complaints/base.html" %}
+{% block title %}Daftar Komplain - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Daftar Komplain</h1>
+    <a href="{% url 'complaints:export_excel' %}?status={{ current_status }}&severity={{ current_severity }}&q={{ search }}{% if only_overdue %}&overdue=1{% endif %}" class="btn btn-gold">⬇ Download ke Excel</a>
+</div>
+
+<form method="get" class="filters">
+    <input type="text" name="q" placeholder="Cari kode / nama / telepon..." value="{{ search }}">
+    <select name="status">
+        <option value="">Semua Status</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="severity">
+        <option value="">Semua Tingkat</option>
+        {% for value, label in severity_choices %}
+        <option value="{{ value }}" {% if current_severity == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+        <input type="checkbox" name="overdue" value="1" style="width:auto;" {% if only_overdue %}checked{% endif %}> Hanya Lewat SLA
+    </label>
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Cabang</th><th>Kategori</th><th>Tingkat</th><th>Status</th><th>Dilaporkan</th></tr>
+        </thead>
+        <tbody>
+        {% for c in page_obj %}
+            <tr>
+                <td><a href="{% url 'complaints:complaint_detail' c.pk %}">{{ c.code }}</a></td>
+                <td>{{ c.customer_name }}</td>
+                <td>{{ c.customer_phone }}</td>
+                <td>{{ c.branch.code }}</td>
+                <td>{{ c.get_category_display }}</td>
+                <td><span class="badge badge-{{ c.severity }}">{{ c.get_severity_display }}</span></td>
+                <td>
+                    <span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span>
+                    {% if c.is_overdue %}<span class="badge badge-overdue">Lewat</span>{% endif %}
+                </td>
+                <td>{{ c.created_at|date:"d M Y H:i" }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="8">Tidak ada komplain yang cocok.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&status={{ current_status }}&severity={{ current_severity }}&q={{ search }}">&laquo; Sebelumnya</a>
+        {% endif %}
+        <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&status={{ current_status }}&severity={{ current_severity }}&q={{ search }}">Selanjutnya &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

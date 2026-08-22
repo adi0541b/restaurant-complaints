@@ -1,0 +1,15 @@
+Django>=5.0,<5.3
+Pillow>=10.0
+python-dotenv>=1.0
+openpyxl>=3.1
+
+# --- Untuk deployment produksi (Render, dsb.) ---
+gunicorn>=22.0
+whitenoise>=6.6
+dj-database-url>=2.2
+psycopg2-binary>=2.9
+
+# --- Opsional: aktifkan baris di bawah jika hosting Anda memakai MySQL/MariaDB
+# (mis. Webuzo, cPanel). Butuh paket sistem libmysqlclient-dev / default-libmysqlclient-dev
+# terpasang di server sebelum "pip install".
+# mysqlclient>=2.2

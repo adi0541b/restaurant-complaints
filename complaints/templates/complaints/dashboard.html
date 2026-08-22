@@ -1,0 +1,174 @@
+{% extends "complaints/base.html" %}
+{% block title %}Dashboard - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Dashboard Komplain</h1>
+    <a href="{% url 'complaints:export_excel' %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
+</div>
+<p class="subtitle">Ringkasan penanganan komplain{% if request.user.staff_profile.branch %} untuk {{ request.user.staff_profile.branch.name }}{% else %} - Semua Cabang{% endif %}.</p>
+
+<div class="stats-grid">
+    <div class="stat-box"><div class="num">{{ stats.total }}</div><div class="label">Total Komplain</div></div>
+    <div class="stat-box"><div class="num">{{ stats.baru }}</div><div class="label">Baru</div></div>
+    <div class="stat-box"><div class="num">{{ stats.diproses }}</div><div class="label">Sedang Ditangani</div></div>
+    <div class="stat-box"><div class="num">{{ stats.selesai }}</div><div class="label">Selesai</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--danger);">{{ stats.overdue }}</div><div class="label">Lewat SLA</div></div>
+    <div class="stat-box"><div class="num">{{ stats.avg_rating|floatformat:1|default:"-" }}</div><div class="label">Rata-rata Rating</div></div>
+</div>
+
+{{ chart_data|json_script:"chart-data" }}
+
+<div class="card">
+    <h2>Tren Komplain (14 Hari Terakhir)</h2>
+    <canvas id="trendChart" height="90"></canvas>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card">
+        <h2>Distribusi Status</h2>
+        <canvas id="statusChart" height="220"></canvas>
+    </div>
+    <div class="card">
+        <h2>Distribusi Tingkat Keparahan</h2>
+        <canvas id="severityChart" height="220"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Komplain per Kategori</h2>
+    <canvas id="categoryChart" height="140"></canvas>
+</div>
+
+<div class="card">
+    <h2>Komplain Terbaru</h2>
+    <table>
+        <thead>
+            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Cabang</th><th>Kategori</th><th>Status</th><th>SLA</th></tr>
+        </thead>
+        <tbody>
+        {% for c in recent_complaints %}
+            <tr>
+                <td><a href="{% url 'complaints:complaint_detail' c.pk %}">{{ c.code }}</a></td>
+                <td>{{ c.customer_name }}</td>
+                <td>{{ c.customer_phone }}</td>
+                <td>{{ c.branch.code }}</td>
+                <td>{{ c.get_category_display }}</td>
+                <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+                <td>{% if c.is_overdue %}<span class="badge badge-overdue">Lewat</span>{% else %}OK{% endif %}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7">Belum ada komplain.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div style="margin-top:14px;"><a href="{% url 'complaints:complaint_list' %}" class="btn btn-outline">Lihat Semua Komplain</a></div>
+</div>
+
+{% if by_branch|length > 1 %}
+<div class="card">
+    <h2>Komplain per Cabang</h2>
+    <table>
+        <thead><tr><th>Cabang</th><th>Jumlah</th></tr></thead>
+        <tbody>
+        {% for row in by_branch %}
+            <tr><td>{{ row.branch__name }}</td><td>{{ row.total }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div id="chart-fallback-msg" class="alert alert-error" style="display:none;">
+    Grafik tidak dapat dimuat karena file library grafik (Chart.js) gagal diambil dari internet.
+    Ini biasanya terjadi jika jaringan/firewall komputer ini memblokir akses ke CDN publik.
+    Coba buka dashboard ini dari jaringan lain, atau hubungi admin IT untuk mengizinkan akses ke
+    <code>cdn.jsdelivr.net</code> dan <code>cdnjs.cloudflare.com</code>. Bagian lain dari dashboard tetap berfungsi normal.
+</div>
+
+<script>
+(function () {
+    function loadScript(src, onSuccess, onError) {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = onSuccess;
+        s.onerror = onError;
+        document.head.appendChild(s);
+    }
+    function renderCharts() {
+        if (typeof Chart === 'undefined') {
+            document.getElementById('chart-fallback-msg').style.display = 'block';
+            return;
+        }
+        const data = JSON.parse(document.getElementById('chart-data').textContent);
+        const maroon = '#7A1F1F';
+        const gold = '#C9A227';
+        const palette = ['#7A1F1F', '#C9A227', '#3B6E8F', '#5B8C5A', '#B00020', '#8C6A3F', '#4C4139'];
+
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: data.trend.labels,
+                datasets: [{
+                    label: 'Komplain per hari',
+                    data: data.trend.values,
+                    borderColor: maroon,
+                    backgroundColor: 'rgba(122,31,31,0.08)',
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: gold,
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.status.labels,
+                datasets: [{ data: data.status.values, backgroundColor: palette }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('severityChart'), {
+            type: 'doughnut',
+            data: {
+                labels: data.severity.labels,
+                datasets: [{ data: data.severity.values, backgroundColor: ['#B00020', '#C9A227', '#3B6E8F', '#5B8C5A'] }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: data.category.labels,
+                datasets: [{ label: 'Jumlah Komplain', data: data.category.values, backgroundColor: gold }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    // Coba CDN pertama (jsDelivr). Jika gagal, coba CDN kedua (cdnjs).
+    // Jika keduanya gagal (mis. tidak ada internet / diblokir firewall),
+    // tampilkan pesan yang jelas alih-alih membuat halaman error.
+    loadScript(
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+        renderCharts,
+        function () {
+            loadScript(
+                'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
+                renderCharts,
+                renderCharts  // tetap panggil agar fallback message ditampilkan
+            );
+        }
+    );
+})();
+</script>
+{% endblock %}

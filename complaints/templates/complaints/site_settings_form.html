@@ -1,0 +1,25 @@
+{% extends "complaints/base.html" %}
+{% block title %}Identitas Perusahaan - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Identitas Perusahaan</h1>
+<p class="subtitle"><a href="{% url 'complaints:admin_panel' %}">&larr; Kembali ke Panel Admin</a></p>
+
+<div class="card">
+    {% if settings_obj.logo %}
+        <div style="margin-bottom:20px;">
+            <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">Logo saat ini:</div>
+            <img src="{{ settings_obj.logo.url }}" alt="Logo" style="max-height:80px;max-width:240px;border-radius:8px;border:1px solid #EEE3D3;padding:8px;">
+        </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.company_name.label_tag }}{{ form.company_name }}
+        {{ form.logo.label_tag }}{{ form.logo }}
+        <p style="color:var(--text-muted);font-size:0.85rem;">Format gambar (PNG/JPG) direkomendasikan, ukuran tidak terlalu besar agar tampilan tetap cepat dimuat.</p>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
