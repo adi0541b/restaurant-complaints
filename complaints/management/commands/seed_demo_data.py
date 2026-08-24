@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from complaints.models import Branch, Complaint, StaffProfile
+from complaints.models import Branch, City, Complaint, StaffProfile
 
 User = get_user_model()
 
@@ -54,16 +54,23 @@ class Command(BaseCommand):
             user=admin_user, defaults={'role': StaffProfile.Role.ADMIN, 'phone': '081200000001'},
         )
 
-        # --- Cabang + Manager + Staff ---
+        # --- Kota + Cabang + Manager Kota + Staff ---
         branches = []
         for i, b in enumerate(BRANCHES, start=1):
+            city, _ = City.objects.get_or_create(name=b['city'])
+
             branch, _ = Branch.objects.get_or_create(
                 code=b['code'],
-                defaults={'name': b['name'], 'city': b['city'], 'address': f"Jl. Contoh No. {i}, {b['city']}"},
+                defaults={'name': b['name'], 'city': city, 'address': f"Jl. Contoh No. {i}, {b['city']}"},
             )
+            if branch.city_id != city.id:
+                branch.city = city
+                branch.save(update_fields=['city'])
             branches.append(branch)
 
-            manager_username = f'manager{i}'
+            # Manager Kota: satu akun manager per kota (bukan per cabang), akses
+            # semua cabang yang berada di kota tsb.
+            manager_username = f"manager_{b['city'].lower()}"
             manager_user, created = User.objects.get_or_create(
                 username=manager_username,
                 defaults={'first_name': 'Manager', 'last_name': b['city'],
@@ -74,7 +81,7 @@ class Command(BaseCommand):
                 manager_user.save()
             StaffProfile.objects.get_or_create(
                 user=manager_user,
-                defaults={'role': StaffProfile.Role.MANAGER, 'branch': branch, 'phone': f'08130000000{i}'},
+                defaults={'role': StaffProfile.Role.MANAGER, 'city': city, 'phone': f'08130000000{i}'},
             )
             branch.manager = manager_user
             branch.save(update_fields=['manager'])
@@ -92,6 +99,34 @@ class Command(BaseCommand):
                 user=staff_user,
                 defaults={'role': StaffProfile.Role.STAFF, 'branch': branch, 'phone': f'08140000000{i}'},
             )
+
+        # --- Manager Wilayah (akses semua kota/cabang) ---
+        area_manager_user, created = User.objects.get_or_create(
+            username='managerwilayah',
+            defaults={'first_name': 'Manager', 'last_name': 'Wilayah',
+                      'email': 'managerwilayah@restoran.example.com', 'is_staff': True},
+        )
+        if created:
+            area_manager_user.set_password('wilayah12345')
+            area_manager_user.save()
+        StaffProfile.objects.get_or_create(
+            user=area_manager_user,
+            defaults={'role': StaffProfile.Role.AREA_MANAGER, 'phone': '081200000002'},
+        )
+
+        # --- Staff Input Komplain (akses semua cabang, khusus input komplain) ---
+        input_staff_user, created = User.objects.get_or_create(
+            username='inputkomplain',
+            defaults={'first_name': 'Staff', 'last_name': 'Input Komplain',
+                      'email': 'inputkomplain@restoran.example.com', 'is_staff': True},
+        )
+        if created:
+            input_staff_user.set_password('input12345')
+            input_staff_user.save()
+        StaffProfile.objects.get_or_create(
+            user=input_staff_user,
+            defaults={'role': StaffProfile.Role.INPUT_STAFF, 'phone': '081200000003'},
+        )
 
         # --- Contoh komplain ---
         n = options['complaints']
@@ -134,9 +169,11 @@ class Command(BaseCommand):
             created_count += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'Selesai. {len(branches)} cabang, {len(branches) * 2 + 1} akun staff, '
+            f'Selesai. {len(branches)} cabang di {City.objects.count()} kota, '
             f'{created_count} contoh komplain dibuat.'
         ))
         self.stdout.write('Login admin pusat: adminpusat / admin12345')
-        self.stdout.write('Login manager: manager1 / manager12345 (dst. manager2, manager3)')
-        self.stdout.write('Login staff: staff1 / staff12345 (dst. staff2, staff3)')
+        self.stdout.write('Login manager wilayah (semua kota): managerwilayah / wilayah12345')
+        self.stdout.write('Login staff input komplain (semua cabang): inputkomplain / input12345')
+        self.stdout.write('Login manager kota: manager_jakarta / manager_bandung / manager_semarang, password: manager12345')
+        self.stdout.write('Login staff cabang: staff1 / staff2 / staff3, password: staff12345')

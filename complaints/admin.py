@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Branch, Complaint, ComplaintTimelineEntry, SiteSettings, StaffProfile
+from .models import Branch, City, Complaint, ComplaintTimelineEntry, SiteSettings, StaffProfile
 
 
 @admin.register(SiteSettings)
@@ -13,17 +13,24 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         return not SiteSettings.objects.exists()
 
 
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+
+
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
     list_display = ('name', 'code', 'city', 'manager', 'is_active')
     list_filter = ('is_active', 'city')
-    search_fields = ('name', 'code', 'city')
+    search_fields = ('name', 'code', 'city__name')
 
 
 @admin.register(StaffProfile)
 class StaffProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role', 'branch', 'phone', 'is_active_pic')
-    list_filter = ('role', 'branch', 'is_active_pic')
+    list_display = ('user', 'role', 'branch', 'city', 'phone', 'is_active_pic')
+    list_filter = ('role', 'branch', 'city', 'is_active_pic')
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'phone')
     autocomplete_fields = ('user',)
 

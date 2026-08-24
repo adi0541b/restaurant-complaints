@@ -128,7 +128,6 @@ USE_TZ = True
 # File statis & media (upload foto bukti komplain)
 # ---------------------------------------------------------------------------
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'complaints' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},

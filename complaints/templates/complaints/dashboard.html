@@ -5,7 +5,15 @@
     <h1 style="margin:0;">Dashboard Komplain</h1>
     <a href="{% url 'complaints:export_excel' %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
 </div>
-<p class="subtitle">Ringkasan penanganan komplain{% if request.user.staff_profile.branch %} untuk {{ request.user.staff_profile.branch.name }}{% else %} - Semua Cabang{% endif %}.</p>
+<p class="subtitle">Ringkasan penanganan komplain -
+{% if request.user.staff_profile.branch %}
+    {{ request.user.staff_profile.branch.name }}
+{% elif request.user.staff_profile.city %}
+    Kota {{ request.user.staff_profile.city.name }}
+{% else %}
+    Semua Cabang
+{% endif %}
+</p>
 
 <div class="stats-grid">
     <div class="stat-box"><div class="num">{{ stats.total }}</div><div class="label">Total Komplain</div></div>

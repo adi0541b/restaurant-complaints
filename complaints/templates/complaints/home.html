@@ -2,8 +2,8 @@
 {% block title %}Lapor Komplain - {{ BRAND_NAME }}{% endblock %}
 {% block content %}
 <div class="card">
-    <h1>Sampaikan Komplain Anda</h1>
-    <p class="subtitle">Kami mohon maaf atas ketidaknyamanan yang Anda alami. Silakan isi form di bawah, tim kami akan segera menindaklanjuti.</p>
+    <h1>Input Komplain Pelanggan</h1>
+    <p class="subtitle">Form ini diisi oleh staff atas nama pelanggan (mis. saat menerima keluhan lewat telepon, WhatsApp, atau langsung di lokasi). Pastikan data pelanggan diisi dengan benar agar notifikasi & pengecekan status bisa berjalan.</p>
 
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
@@ -14,8 +14,22 @@
         {{ form.customer_email.label_tag }}{{ form.customer_email }}
 
         <h3>Detail Kunjungan</h3>
-        {{ form.branch.label_tag }}{{ form.branch }}
-        {{ form.table_number.label_tag }}{{ form.table_number }}
+        <label for="city_filter">Kota</label>
+        <select id="city_filter" class="form-select">
+            <option value="">-- Semua Kota --</option>
+            {% for c in cities %}
+                <option value="{{ c.id }}" {% if c.id == initial_city_id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="id_branch">Cabang</label>
+        <select name="branch" id="id_branch" class="form-select" required>
+            <option value="">-- Pilih Cabang --</option>
+            {% for b in branches %}
+                <option value="{{ b.id }}" data-city="{{ b.city_id|default:'' }}" {% if b.id == initial_branch_id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+            {% endfor %}
+        </select>
+
         {{ form.visit_date.label_tag }}{{ form.visit_date }}
         {{ form.order_number.label_tag }}{{ form.order_number }}
 
@@ -30,7 +44,29 @@
         </div>
     </form>
 </div>
-<p style="text-align:center;color:var(--text-muted);font-size:0.85rem;">
-    Tips: Scan QR code di meja Anda agar cabang &amp; nomor meja terisi otomatis.
-</p>
+
+<script>
+(function () {
+    var cityFilter = document.getElementById('city_filter');
+    var branchSelect = document.getElementById('id_branch');
+    var allOptions = Array.prototype.slice.call(branchSelect.options);
+
+    function filterBranches() {
+        var cityId = cityFilter.value;
+        allOptions.forEach(function (opt) {
+            if (!opt.value) { opt.hidden = false; return; } // opsi "-- Pilih Cabang --" selalu tampil
+            var matches = !cityId || opt.getAttribute('data-city') === cityId;
+            opt.hidden = !matches;
+        });
+        // Reset pilihan cabang kalau cabang yang sedang terpilih tidak cocok dengan kota baru
+        var selectedOpt = branchSelect.options[branchSelect.selectedIndex];
+        if (selectedOpt && selectedOpt.hidden) {
+            branchSelect.value = '';
+        }
+    }
+
+    cityFilter.addEventListener('change', filterBranches);
+    filterBranches(); // jalankan sekali saat halaman dimuat (menghormati prefill dari QR code)
+})();
+</script>
 {% endblock %}

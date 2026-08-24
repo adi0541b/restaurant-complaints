@@ -10,7 +10,7 @@
 <div class="card">
     <table>
         <thead>
-            <tr><th>Username</th><th>Nama</th><th>Peran</th><th>Cabang</th><th>Aktif</th><th></th></tr>
+            <tr><th>Username</th><th>Nama</th><th>Peran</th><th>Cakupan Akses</th><th>Aktif</th><th></th></tr>
         </thead>
         <tbody>
         {% for u in users %}
@@ -18,9 +18,20 @@
                 <td>{{ u.username }}</td>
                 <td>{{ u.get_full_name|default:"-" }}</td>
                 <td>{% if u.staff_profile %}{{ u.staff_profile.get_role_display }}{% else %}<span style="color:var(--text-muted);">Belum diatur</span>{% endif %}</td>
-                <td>{{ u.staff_profile.branch.name|default:"Semua Cabang" }}</td>
+                <td>
+                    {% if u.staff_profile.branch %}
+                        Cabang: {{ u.staff_profile.branch.name }}
+                    {% elif u.staff_profile.city %}
+                        Kota: {{ u.staff_profile.city.name }}
+                    {% else %}
+                        Semua Cabang
+                    {% endif %}
+                </td>
                 <td>{% if u.is_active %}✅{% else %}❌{% endif %}</td>
-                <td><a href="{% url 'complaints:user_edit' u.pk %}" class="btn btn-outline">Edit</a></td>
+                <td>
+                    <a href="{% url 'complaints:user_edit' u.pk %}" class="btn btn-outline">Edit</a>
+                    <a href="{% url 'complaints:user_reset_password' u.pk %}" class="btn btn-outline">Reset Password</a>
+                </td>
             </tr>
         {% empty %}
             <tr><td colspan="6">Belum ada user.</td></tr>

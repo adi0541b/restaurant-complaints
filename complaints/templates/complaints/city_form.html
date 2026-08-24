@@ -1,0 +1,20 @@
+{% extends "complaints/base.html" %}
+{% block title %}{% if is_create %}Tambah Kota{% else %}Edit Kota{% endif %} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>{% if is_create %}Tambah Kota Baru{% else %}Edit Kota: {{ city.name }}{% endif %}</h1>
+<p class="subtitle"><a href="{% url 'complaints:city_list' %}">&larr; Kembali ke Daftar Kota</a></p>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.name.label_tag }}{{ form.name }}
+        <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
+            {{ form.is_active }} <span style="font-weight:normal;">Kota Aktif</span>
+        </label>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">{% if is_create %}Tambah Kota{% else %}Simpan Perubahan{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

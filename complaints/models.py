@@ -7,15 +7,36 @@ from django.utils import timezone
 
 
 # =============================================================================
+# KOTA
+# =============================================================================
+class City(models.Model):
+    """Kota tempat cabang-cabang berada. Hanya Admin Pusat yang bisa menambah/mengubah."""
+    name = models.CharField('Nama Kota', max_length=100, unique=True)
+    is_active = models.BooleanField('Aktif', default=True)
+    created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Kota'
+        verbose_name_plural = 'Kota'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# =============================================================================
 # CABANG (BRANCH)
 # =============================================================================
 class Branch(models.Model):
-    """Cabang restoran."""
+    """Cabang restoran. Setiap cabang berada di satu kota."""
     name = models.CharField('Nama Cabang', max_length=150)
     code = models.CharField('Kode Cabang', max_length=20, unique=True,
                              help_text='Contoh: JKT-01, BDG-02')
     address = models.TextField('Alamat', blank=True)
-    city = models.CharField('Kota', max_length=100, blank=True)
+    city = models.ForeignKey(
+        City, verbose_name='Kota', related_name='branches',
+        null=True, blank=True, on_delete=models.PROTECT,
+    )
     phone = models.CharField('Telepon', max_length=30, blank=True)
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name='Manager Cabang',
@@ -38,11 +59,13 @@ class Branch(models.Model):
 # PROFIL STAFF / PIC
 # =============================================================================
 class StaffProfile(models.Model):
-    """Profil tambahan untuk user dengan peran Staff/PIC, Manager, atau Admin Pusat."""
+    """Profil tambahan untuk user dengan berbagai peran & cakupan akses."""
 
     class Role(models.TextChoices):
         STAFF = 'staff', 'Staff / PIC Cabang'
-        MANAGER = 'manager', 'Manager Cabang'
+        INPUT_STAFF = 'input_staff', 'Staff Input Komplain'
+        MANAGER = 'manager', 'Manager Kota'
+        AREA_MANAGER = 'area_manager', 'Manager Wilayah'
         ADMIN = 'admin', 'Admin Pusat'
 
     user = models.OneToOneField(
@@ -53,7 +76,12 @@ class StaffProfile(models.Model):
     branch = models.ForeignKey(
         Branch, verbose_name='Cabang', related_name='staff_members',
         null=True, blank=True, on_delete=models.SET_NULL,
-        help_text='Kosongkan untuk Admin Pusat (akses semua cabang).',
+        help_text='Isi untuk peran Staff/PIC Cabang (akses 1 cabang spesifik).',
+    )
+    city = models.ForeignKey(
+        City, verbose_name='Kota', related_name='managers',
+        null=True, blank=True, on_delete=models.SET_NULL,
+        help_text='Isi untuk peran Manager Kota (akses semua cabang di kota tsb).',
     )
     phone = models.CharField('No. WhatsApp', max_length=30, blank=True)
     photo = models.ImageField('Foto Profil', upload_to='staff_photos/', blank=True, null=True)
@@ -65,12 +93,21 @@ class StaffProfile(models.Model):
         verbose_name_plural = 'Profil Staff'
 
     def __str__(self):
-        branch_label = self.branch.name if self.branch else 'Semua Cabang'
-        return f'{self.user.get_full_name() or self.user.username} - {self.get_role_display()} ({branch_label})'
+        if self.branch:
+            scope_label = self.branch.name
+        elif self.city:
+            scope_label = f'Kota {self.city.name}'
+        else:
+            scope_label = 'Semua Cabang'
+        return f'{self.user.get_full_name() or self.user.username} - {self.get_role_display()} ({scope_label})'
 
     @property
     def is_admin_pusat(self):
         return self.role == self.Role.ADMIN
+
+    @property
+    def is_area_manager(self):
+        return self.role == self.Role.AREA_MANAGER
 
     @property
     def is_manager(self):
@@ -79,6 +116,15 @@ class StaffProfile(models.Model):
     @property
     def is_staff_pic(self):
         return self.role == self.Role.STAFF
+
+    @property
+    def is_input_staff(self):
+        return self.role == self.Role.INPUT_STAFF
+
+    @property
+    def has_full_visibility(self):
+        """Role dengan akses melihat semua cabang di semua kota."""
+        return self.role in (self.Role.ADMIN, self.Role.AREA_MANAGER, self.Role.INPUT_STAFF)
 
 
 # =============================================================================

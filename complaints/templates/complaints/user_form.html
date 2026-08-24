@@ -12,10 +12,16 @@
         {{ form.last_name.label_tag }}{{ form.last_name }}
         {{ form.email.label_tag }}{{ form.email }}
 
-        <h3>Peran &amp; Cabang</h3>
+        <h3>Peran &amp; Cakupan Akses</h3>
         {{ form.role.label_tag }}{{ form.role }}
-        {{ form.branch.label_tag }}{{ form.branch }}
-        {% if form.branch.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.branch.help_text }}</p>{% endif %}
+        <div id="branch-field-wrapper">
+            {{ form.branch.label_tag }}{{ form.branch }}
+            {% if form.branch.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.branch.help_text }}</p>{% endif %}
+        </div>
+        <div id="city-field-wrapper">
+            {{ form.city.label_tag }}{{ form.city }}
+            {% if form.city.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.city.help_text }}</p>{% endif %}
+        </div>
         {{ form.phone.label_tag }}{{ form.phone }}
 
         {% if is_create %}
@@ -36,4 +42,23 @@
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    var roleField = document.getElementById('id_role');
+    var branchWrapper = document.getElementById('branch-field-wrapper');
+    var cityWrapper = document.getElementById('city-field-wrapper');
+
+    function toggleFields() {
+        var role = roleField.value;
+        branchWrapper.style.display = (role === 'staff') ? '' : 'none';
+        cityWrapper.style.display = (role === 'manager') ? '' : 'none';
+    }
+
+    if (roleField) {
+        roleField.addEventListener('change', toggleFields);
+        toggleFields();
+    }
+})();
+</script>
 {% endblock %}

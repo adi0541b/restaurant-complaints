@@ -1,3 +1,4 @@
+import secrets
 from datetime import timedelta
 from functools import wraps
 
@@ -13,6 +14,7 @@ from django.utils import timezone
 
 from .forms import (
     BranchAdminForm,
+    CityAdminForm,
     ComplaintSubmissionForm,
     ComplaintUpdateForm,
     SatisfactionRatingForm,
@@ -21,27 +23,56 @@ from .forms import (
     StaffAccountEditForm,
     StatusCheckForm,
 )
-from .models import Branch, Complaint, SiteSettings
+from .models import Branch, City, Complaint, SiteSettings, StaffProfile
 
 User = get_user_model()
+
+
+def admin_pusat_required(view_func):
+    """Membatasi akses hanya untuk user dengan peran Admin Pusat."""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        profile = getattr(request.user, 'staff_profile', None)
+        if profile is None or not profile.is_admin_pusat:
+            raise PermissionDenied('Hanya Admin Pusat yang dapat mengakses halaman ini.')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def input_staff_required(view_func):
+    """Membatasi akses HANYA untuk user dengan peran Staff Input Komplain."""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        profile = getattr(request.user, 'staff_profile', None)
+        if profile is None or not profile.is_input_staff:
+            raise PermissionDenied('Hanya Staff Input Komplain yang dapat mengakses halaman ini.')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # =============================================================================
 # HALAMAN PUBLIK (tanpa login) - untuk PELANGGAN
 # =============================================================================
+@login_required
 def home_submission(request):
-    """Form pengajuan komplain publik. Mendukung prefill via QR/URL:
-    ?cabang=<kode_cabang>&meja=<nomor_meja>
+    """Form input komplain. HANYA bisa diakses oleh user berperan Staff Input Komplain.
+    User lain yang login otomatis dialihkan ke Dashboard.
+    Mendukung prefill via QR/URL: ?cabang=<kode_cabang>&meja=<nomor_meja>
     """
+    profile = getattr(request.user, 'staff_profile', None)
+    if profile is None or not profile.is_input_staff:
+        messages.info(request, 'Halaman Input Komplain hanya untuk Staff Input Komplain.')
+        return redirect('complaints:dashboard')
+
     initial = {}
     branch_code = request.GET.get('cabang')
-    table_number = request.GET.get('meja')
+    initial_branch = None
     if branch_code:
-        branch = Branch.objects.filter(code__iexact=branch_code, is_active=True).first()
-        if branch:
-            initial['branch'] = branch.pk
-    if table_number:
-        initial['table_number'] = table_number
+        initial_branch = Branch.objects.filter(code__iexact=branch_code, is_active=True).first()
+        if initial_branch:
+            initial['branch'] = initial_branch.pk
 
     if request.method == 'POST':
         form = ComplaintSubmissionForm(request.POST, request.FILES)
@@ -56,7 +87,14 @@ def home_submission(request):
     else:
         form = ComplaintSubmissionForm(initial=initial)
 
-    return render(request, 'complaints/home.html', {'form': form})
+    context = {
+        'form': form,
+        'cities': City.objects.filter(is_active=True).order_by('name'),
+        'branches': Branch.objects.filter(is_active=True).select_related('city').order_by('name'),
+        'initial_branch_id': initial_branch.pk if initial_branch else None,
+        'initial_city_id': initial_branch.city_id if initial_branch else None,
+    }
+    return render(request, 'complaints/home.html', context)
 
 
 def submission_success(request, code):
@@ -123,23 +161,20 @@ def _visible_complaints_for(user):
     profile = getattr(user, 'staff_profile', None)
     if profile is None:
         return qs.none()
-    if profile.is_admin_pusat:
+    if profile.has_full_visibility:
+        # Admin Pusat, Manager Wilayah, dan Staff Input Komplain melihat SEMUA cabang.
         return qs
-    if profile.branch_id:
-        return qs.filter(branch=profile.branch)
+    if profile.is_manager:
+        # Manager Kota: semua cabang yang berada di kota yang sama dengan dirinya.
+        if profile.city_id:
+            return qs.filter(branch__city=profile.city)
+        return qs.none()
+    if profile.is_staff_pic:
+        # Staff/PIC Cabang: hanya cabang spesifiknya sendiri.
+        if profile.branch_id:
+            return qs.filter(branch=profile.branch)
+        return qs.none()
     return qs.none()
-
-
-def admin_pusat_required(view_func):
-    """Membatasi akses hanya untuk user dengan peran Admin Pusat."""
-    @wraps(view_func)
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        profile = getattr(request.user, 'staff_profile', None)
-        if profile is None or not profile.is_admin_pusat:
-            raise PermissionDenied('Hanya Admin Pusat yang dapat mengakses halaman ini.')
-        return view_func(request, *args, **kwargs)
-    return wrapper
 
 
 # =============================================================================
@@ -395,13 +430,16 @@ def admin_panel(request):
     context = {
         'total_users': User.objects.count(),
         'total_branches': Branch.objects.count(),
+        'total_cities': City.objects.count(),
     }
     return render(request, 'complaints/admin_panel.html', context)
 
 
 @admin_pusat_required
 def user_list(request):
-    users = User.objects.select_related('staff_profile', 'staff_profile__branch').order_by('username')
+    users = User.objects.select_related(
+        'staff_profile', 'staff_profile__branch', 'staff_profile__city'
+    ).order_by('username')
     return render(request, 'complaints/user_list.html', {'users': users})
 
 
@@ -432,6 +470,27 @@ def user_edit(request, pk):
     return render(request, 'complaints/user_form.html', {
         'form': form, 'is_create': False, 'user_obj': user_obj,
     })
+
+
+@admin_pusat_required
+def user_reset_password(request, pk):
+    """Admin Pusat me-reset password user manapun ke password acak baru.
+    Password ASLI tidak pernah bisa dilihat (disimpan dalam bentuk hash satu-arah,
+    ini standar keamanan universal) -- ini alternatif yang aman: generate password
+    baru dan tampilkan SATU KALI di layar supaya bisa disalin & diberikan ke staf.
+    """
+    user_obj = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        new_password = secrets.token_urlsafe(9)  # ~12 karakter, mudah dibaca & disalin
+        user_obj.set_password(new_password)
+        user_obj.save(update_fields=['password'])
+        messages.success(
+            request,
+            f'Password baru untuk "{user_obj.username}" adalah: {new_password} '
+            '(salin sekarang, tidak akan ditampilkan lagi setelah ini).'
+        )
+        return redirect('complaints:user_list')
+    return render(request, 'complaints/user_reset_password_confirm.html', {'user_obj': user_obj})
 
 
 @admin_pusat_required
@@ -482,4 +541,42 @@ def site_settings_edit(request):
         form = SiteSettingsForm(instance=settings_obj)
     return render(request, 'complaints/site_settings_form.html', {
         'form': form, 'settings_obj': settings_obj,
+    })
+
+
+# =============================================================================
+# PANEL ADMIN PUSAT: kelola KOTA (hanya Admin Pusat yang boleh menambah/mengubah)
+# =============================================================================
+@admin_pusat_required
+def city_list(request):
+    cities = City.objects.all().order_by('name')
+    return render(request, 'complaints/city_list.html', {'cities': cities})
+
+
+@admin_pusat_required
+def city_create(request):
+    if request.method == 'POST':
+        form = CityAdminForm(request.POST)
+        if form.is_valid():
+            city = form.save()
+            messages.success(request, f'Kota "{city.name}" berhasil ditambahkan.')
+            return redirect('complaints:city_list')
+    else:
+        form = CityAdminForm()
+    return render(request, 'complaints/city_form.html', {'form': form, 'is_create': True})
+
+
+@admin_pusat_required
+def city_edit(request, pk):
+    city = get_object_or_404(City, pk=pk)
+    if request.method == 'POST':
+        form = CityAdminForm(request.POST, instance=city)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Kota "{city.name}" berhasil diperbarui.')
+            return redirect('complaints:city_list')
+    else:
+        form = CityAdminForm(instance=city)
+    return render(request, 'complaints/city_form.html', {
+        'form': form, 'is_create': False, 'city': city,
     })

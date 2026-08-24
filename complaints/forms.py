@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 
-from .models import Branch, Complaint, SiteSettings, StaffProfile
+from .models import Branch, City, Complaint, SiteSettings, StaffProfile
 
 User = get_user_model()
 
@@ -14,7 +14,7 @@ class ComplaintSubmissionForm(forms.ModelForm):
         model = Complaint
         fields = [
             'customer_name', 'customer_phone', 'customer_email',
-            'branch', 'table_number', 'visit_date', 'order_number',
+            'branch', 'visit_date', 'order_number',
             'category', 'severity', 'description', 'photo_evidence',
         ]
         widgets = {
@@ -25,8 +25,6 @@ class ComplaintSubmissionForm(forms.ModelForm):
             'customer_email': forms.EmailInput(attrs={
                 'class': 'form-control', 'placeholder': 'email@contoh.com (opsional)'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
-            'table_number': forms.TextInput(attrs={
-                'class': 'form-control', 'placeholder': 'Contoh: A12 (opsional)'}),
             'visit_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'order_number': forms.TextInput(attrs={
                 'class': 'form-control', 'placeholder': 'Nomor struk/pesanan (opsional)'}),
@@ -47,7 +45,6 @@ class ComplaintSubmissionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
         self.fields['customer_email'].required = False
-        self.fields['table_number'].required = False
         self.fields['order_number'].required = False
         self.fields['visit_date'].required = False
         self.fields['photo_evidence'].required = False
@@ -117,7 +114,7 @@ ADMIN_SELECT_ATTRS = {'class': 'form-select'}
 
 
 class StaffAccountCreateForm(UserCreationForm):
-    """Form membuat akun baru (Staff/PIC, Manager, atau Admin Pusat)."""
+    """Form membuat akun baru dengan berbagai peran."""
     first_name = forms.CharField(label='Nama Depan', max_length=150, widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
     last_name = forms.CharField(label='Nama Belakang', max_length=150, required=False,
                                  widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -126,7 +123,12 @@ class StaffAccountCreateForm(UserCreationForm):
     branch = forms.ModelChoiceField(
         label='Cabang', queryset=Branch.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Kosongkan untuk peran Admin Pusat (akses semua cabang).',
+        help_text='Isi untuk peran Staff/PIC Cabang saja (akses 1 cabang).',
+    )
+    city = forms.ModelChoiceField(
+        label='Kota', queryset=City.objects.filter(is_active=True), required=False,
+        widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
+        help_text='Isi untuk peran Manager Kota saja (akses semua cabang di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -151,6 +153,7 @@ class StaffAccountCreateForm(UserCreationForm):
                 defaults={
                     'role': self.cleaned_data['role'],
                     'branch': self.cleaned_data.get('branch'),
+                    'city': self.cleaned_data.get('city'),
                     'phone': self.cleaned_data.get('phone', ''),
                 },
             )
@@ -158,12 +161,17 @@ class StaffAccountCreateForm(UserCreationForm):
 
 
 class StaffAccountEditForm(forms.ModelForm):
-    """Form mengubah akun yang sudah ada: data user, peran, cabang, dan opsional ganti password."""
+    """Form mengubah akun yang sudah ada: data user, peran, cakupan akses, dan opsional ganti password."""
     role = forms.ChoiceField(label='Peran', choices=StaffProfile.Role.choices, widget=forms.Select(attrs=ADMIN_SELECT_ATTRS))
     branch = forms.ModelChoiceField(
         label='Cabang', queryset=Branch.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Kosongkan untuk peran Admin Pusat (akses semua cabang).',
+        help_text='Isi untuk peran Staff/PIC Cabang saja (akses 1 cabang).',
+    )
+    city = forms.ModelChoiceField(
+        label='Kota', queryset=City.objects.filter(is_active=True), required=False,
+        widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
+        help_text='Isi untuk peran Manager Kota saja (akses semua cabang di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -192,6 +200,7 @@ class StaffAccountEditForm(forms.ModelForm):
         if profile is not None:
             self.fields['role'].initial = profile.role
             self.fields['branch'].initial = profile.branch_id
+            self.fields['city'].initial = profile.city_id
             self.fields['phone'].initial = profile.phone
 
     def save(self, commit=True):
@@ -206,10 +215,23 @@ class StaffAccountEditForm(forms.ModelForm):
                 defaults={
                     'role': self.cleaned_data['role'],
                     'branch': self.cleaned_data.get('branch'),
+                    'city': self.cleaned_data.get('city'),
                     'phone': self.cleaned_data.get('phone', ''),
                 },
             )
         return user
+
+
+class CityAdminForm(forms.ModelForm):
+    """Form tambah/ubah kota. HANYA Admin Pusat yang berhak (dibatasi di views.py)."""
+
+    class Meta:
+        model = City
+        fields = ['name', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: Jakarta'}),
+        }
+        labels = {'is_active': 'Kota Aktif'}
 
 
 class BranchAdminForm(forms.ModelForm):
@@ -222,7 +244,7 @@ class BranchAdminForm(forms.ModelForm):
             'name': forms.TextInput(attrs=ADMIN_TEXT_ATTRS),
             'code': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: JKT-02'}),
             'address': forms.Textarea(attrs={**ADMIN_TEXT_ATTRS, 'rows': 2}),
-            'city': forms.TextInput(attrs=ADMIN_TEXT_ATTRS),
+            'city': forms.Select(attrs=ADMIN_SELECT_ATTRS),
             'phone': forms.TextInput(attrs=ADMIN_TEXT_ATTRS),
             'manager': forms.Select(attrs=ADMIN_SELECT_ATTRS),
         }
@@ -230,6 +252,9 @@ class BranchAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['city'].queryset = City.objects.filter(is_active=True)
+        self.fields['city'].required = False
+        self.fields['city'].empty_label = '-- Pilih Kota --'
         self.fields['manager'].queryset = User.objects.filter(staff_profile__role=StaffProfile.Role.MANAGER)
         self.fields['manager'].required = False
 

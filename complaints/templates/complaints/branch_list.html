@@ -17,7 +17,7 @@
             <tr>
                 <td>{{ b.name }}</td>
                 <td>{{ b.code }}</td>
-                <td>{{ b.city|default:"-" }}</td>
+                <td>{{ b.city.name|default:"-" }}</td>
                 <td>{{ b.manager.get_full_name|default:b.manager.username|default:"-" }}</td>
                 <td>{% if b.is_active %}✅{% else %}❌{% endif %}</td>
                 <td><a href="{% url 'complaints:branch_edit' b.pk %}" class="btn btn-outline">Edit</a></td>

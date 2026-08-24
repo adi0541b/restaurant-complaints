@@ -26,8 +26,12 @@ urlpatterns = [
     path('admin-panel/users/', views.user_list, name='user_list'),
     path('admin-panel/users/baru/', views.user_create, name='user_create'),
     path('admin-panel/users/<int:pk>/edit/', views.user_edit, name='user_edit'),
+    path('admin-panel/users/<int:pk>/reset-password/', views.user_reset_password, name='user_reset_password'),
     path('admin-panel/cabang/', views.branch_list, name='branch_list'),
     path('admin-panel/cabang/baru/', views.branch_create, name='branch_create'),
     path('admin-panel/cabang/<int:pk>/edit/', views.branch_edit, name='branch_edit'),
+    path('admin-panel/kota/', views.city_list, name='city_list'),
+    path('admin-panel/kota/baru/', views.city_create, name='city_create'),
+    path('admin-panel/kota/<int:pk>/edit/', views.city_edit, name='city_edit'),
     path('admin-panel/pengaturan/', views.site_settings_edit, name='site_settings_edit'),
 ]

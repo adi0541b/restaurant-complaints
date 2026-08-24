@@ -1,0 +1,29 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kelola Kota - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Kelola Kota</h1>
+    <a href="{% url 'complaints:city_create' %}" class="btn btn-primary">+ Tambah Kota Baru</a>
+</div>
+<p class="subtitle"><a href="{% url 'complaints:admin_panel' %}">&larr; Kembali ke Panel Admin</a></p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Nama Kota</th><th>Jumlah Cabang</th><th>Aktif</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for c in cities %}
+            <tr>
+                <td>{{ c.name }}</td>
+                <td>{{ c.branches.count }}</td>
+                <td>{% if c.is_active %}✅{% else %}❌{% endif %}</td>
+                <td><a href="{% url 'complaints:city_edit' c.pk %}" class="btn btn-outline">Edit</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4">Belum ada kota. Tambahkan dulu sebelum membuat cabang.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

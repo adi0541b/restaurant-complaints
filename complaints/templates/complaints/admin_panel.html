@@ -11,6 +11,11 @@
         <a href="{% url 'complaints:user_list' %}" class="btn btn-primary">Buka Daftar User</a>
     </div>
     <div class="card">
+        <h2 style="margin-top:0;">🏙️ Kelola Kota</h2>
+        <p style="color:var(--text-muted);">{{ total_cities }} kota terdaftar. Kota dipakai untuk mengelompokkan cabang & cakupan akses Manager Kota.</p>
+        <a href="{% url 'complaints:city_list' %}" class="btn btn-primary">Buka Daftar Kota</a>
+    </div>
+    <div class="card">
         <h2 style="margin-top:0;">🏬 Kelola Cabang</h2>
         <p style="color:var(--text-muted);">{{ total_branches }} cabang terdaftar.</p>
         <a href="{% url 'complaints:branch_list' %}" class="btn btn-primary">Buka Daftar Cabang</a>
