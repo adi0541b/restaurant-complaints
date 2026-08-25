@@ -128,6 +128,20 @@ class Command(BaseCommand):
             defaults={'role': StaffProfile.Role.INPUT_STAFF, 'phone': '081200000003'},
         )
 
+        # --- Validator (akses semua cabang, khusus validasi solusi) ---
+        validator_user, created = User.objects.get_or_create(
+            username='validator',
+            defaults={'first_name': 'Staff', 'last_name': 'Validator',
+                      'email': 'validator@restoran.example.com', 'is_staff': True},
+        )
+        if created:
+            validator_user.set_password('validator12345')
+            validator_user.save()
+        StaffProfile.objects.get_or_create(
+            user=validator_user,
+            defaults={'role': StaffProfile.Role.VALIDATOR, 'phone': '081200000004'},
+        )
+
         # --- Contoh komplain ---
         n = options['complaints']
         categories = list(Complaint.Category.values)
@@ -175,5 +189,6 @@ class Command(BaseCommand):
         self.stdout.write('Login admin pusat: adminpusat / admin12345')
         self.stdout.write('Login manager wilayah (semua kota): managerwilayah / wilayah12345')
         self.stdout.write('Login staff input komplain (semua cabang): inputkomplain / input12345')
+        self.stdout.write('Login validator (semua cabang): validator / validator12345')
         self.stdout.write('Login manager kota: manager_jakarta / manager_bandung / manager_semarang, password: manager12345')
         self.stdout.write('Login staff cabang: staff1 / staff2 / staff3, password: staff12345')

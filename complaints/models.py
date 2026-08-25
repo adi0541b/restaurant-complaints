@@ -64,6 +64,7 @@ class StaffProfile(models.Model):
     class Role(models.TextChoices):
         STAFF = 'staff', 'Staff / PIC Cabang'
         INPUT_STAFF = 'input_staff', 'Staff Input Komplain'
+        VALIDATOR = 'validator', 'Validator'
         MANAGER = 'manager', 'Manager Kota'
         AREA_MANAGER = 'area_manager', 'Manager Wilayah'
         ADMIN = 'admin', 'Admin Pusat'
@@ -122,9 +123,13 @@ class StaffProfile(models.Model):
         return self.role == self.Role.INPUT_STAFF
 
     @property
+    def is_validator(self):
+        return self.role == self.Role.VALIDATOR
+
+    @property
     def has_full_visibility(self):
         """Role dengan akses melihat semua cabang di semua kota."""
-        return self.role in (self.Role.ADMIN, self.Role.AREA_MANAGER, self.Role.INPUT_STAFF)
+        return self.role in (self.Role.ADMIN, self.Role.AREA_MANAGER, self.Role.INPUT_STAFF, self.Role.VALIDATOR)
 
 
 # =============================================================================
@@ -186,8 +191,31 @@ class Complaint(models.Model):
         related_name='complaints_assigned', null=True, blank=True,
         on_delete=models.SET_NULL,
     )
-    resolution_notes = models.TextField('Catatan Penyelesaian', blank=True)
-    internal_notes = models.TextField('Catatan Internal (tidak terlihat pelanggan)', blank=True)
+    resolution_notes = models.TextField('Akar Masalah', blank=True)
+    internal_notes = models.TextField('Solusi', blank=True)
+
+    # --- Gerbang 1: Validator mengonfirmasi Solusi, baru Staff bisa isi Validasi ---
+    solution_confirmed = models.BooleanField('Solusi Dikonfirmasi Validator', default=False)
+    solution_confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='Solusi dikonfirmasi oleh',
+        related_name='complaints_solution_confirmed', null=True, blank=True,
+        on_delete=models.SET_NULL,
+    )
+    solution_confirmed_at = models.DateTimeField('Solusi dikonfirmasi pada', null=True, blank=True)
+
+    validation_notes = models.TextField(
+        'Validasi', blank=True,
+        help_text='Diisi Staff/PIC Cabang setelah Solusi dikonfirmasi Validator.',
+    )
+
+    # --- Gerbang 2: Konfirmasi akhir (oleh Validator) -> status Selesai ------
+    validated = models.BooleanField('Dikonfirmasi Validator', default=False)
+    validated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='Divalidasi oleh',
+        related_name='complaints_validated', null=True, blank=True,
+        on_delete=models.SET_NULL,
+    )
+    validated_at = models.DateTimeField('Divalidasi pada', null=True, blank=True)
 
     # --- SLA ------------------------------------------------------------------
     sla_deadline = models.DateTimeField('Batas Waktu SLA', null=True, blank=True, editable=False)

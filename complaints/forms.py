@@ -77,33 +77,101 @@ class SatisfactionRatingForm(forms.ModelForm):
 
 
 class ComplaintUpdateForm(forms.ModelForm):
-    """Form untuk Staff/Manager memperbarui status & penanganan komplain."""
+    """Form memperbarui penanganan komplain. Field yang muncul & bisa diedit
+    tergantung PERAN user (profile) dan SEJAUH MANA data sudah terisi
+    (visibilitas bertahap, 2 gerbang konfirmasi Validator):
+
+    - Status & Tingkat Keparahan : hanya Staff Input Komplain
+    - Akar Masalah               : hanya Staff/PIC Cabang
+    - Solusi                     : hanya Staff/PIC Cabang, MUNCUL setelah
+                                    Akar Masalah terisi
+    - [Gerbang 1] Solusi Dikonfirmasi Validator : hanya Validator, MUNCUL
+                                    setelah Solusi terisi
+    - Validasi (teks)            : hanya Staff/PIC Cabang, MUNCUL setelah
+                                    Gerbang 1 dicentang Validator
+    - [Gerbang 2] Dikonfirmasi Validator : hanya Validator, MUNCUL setelah
+                                    Validasi (teks) terisi -> status Selesai
+    """
 
     class Meta:
         model = Complaint
         fields = [
-            'status', 'assigned_to', 'severity',
-            'resolution_notes', 'internal_notes',
+            'status', 'severity', 'resolution_notes', 'internal_notes',
+            'solution_confirmed', 'validation_notes', 'validated',
         ]
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'assigned_to': forms.Select(attrs={'class': 'form-select'}),
             'severity': forms.Select(attrs={'class': 'form-select'}),
             'resolution_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
-                'placeholder': 'Tindakan/solusi yang diberikan ke pelanggan'}),
+                'placeholder': 'Apa akar penyebab masalah ini?'}),
             'internal_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
-                'placeholder': 'Catatan internal, tidak terlihat oleh pelanggan'}),
+                'placeholder': 'Solusi/tindakan yang diberikan'}),
+            'solution_confirmed': forms.CheckboxInput(),
+            'validation_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Catatan validasi (bukti/verifikasi bahwa solusi sudah diterapkan)'}),
+            'validated': forms.CheckboxInput(),
+        }
+        labels = {
+            'resolution_notes': 'Akar Masalah',
+            'internal_notes': 'Solusi',
+            'solution_confirmed': 'Centang: Solusi sudah benar (mengizinkan Staff mengisi Validasi)',
+            'validation_notes': 'Validasi',
+            'validated': 'Centang: Validasi sudah benar (menyelesaikan komplain)',
         }
 
     def __init__(self, *args, **kwargs):
-        branch = kwargs.pop('branch', None)
+        profile = kwargs.pop('profile', None)
         super().__init__(*args, **kwargs)
-        if branch is not None:
-            self.fields['assigned_to'].queryset = User.objects.filter(
-                staff_profile__branch=branch
-            )
+
+        sudah_dikonfirmasi = bool(self.instance and self.instance.validated)
+
+        # Status & Tingkat Keparahan: hanya Staff Input Komplain
+        if not (profile and profile.is_input_staff):
+            del self.fields['status']
+            del self.fields['severity']
+
+        # Akar Masalah: hanya Staff/PIC Cabang, DAN hanya selama belum dikonfirmasi
+        if not (profile and profile.is_staff_pic) or sudah_dikonfirmasi:
+            if 'resolution_notes' in self.fields:
+                del self.fields['resolution_notes']
+
+        # Solusi: hanya Staff/PIC Cabang, muncul setelah Akar Masalah terisi,
+        # DAN hanya selama belum dikonfirmasi
+        akar_masalah_sudah_terisi = bool(self.instance and self.instance.resolution_notes)
+        if 'internal_notes' in self.fields:
+            if not (profile and profile.is_staff_pic) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
+                del self.fields['internal_notes']
+
+        # [Gerbang 1] Solusi Dikonfirmasi Validator: hanya Validator,
+        # muncul setelah Solusi terisi
+        solusi_sudah_terisi = bool(self.instance and self.instance.internal_notes)
+        if 'solution_confirmed' in self.fields:
+            if not (profile and profile.is_validator) or not solusi_sudah_terisi:
+                del self.fields['solution_confirmed']
+            elif self.instance.solution_confirmed:
+                self.fields['solution_confirmed'].disabled = True
+
+        # Validasi (teks): hanya Staff/PIC Cabang, muncul setelah Gerbang 1
+        # dicentang Validator, DAN hanya selama belum dikonfirmasi akhir
+        gerbang1_sudah_dicentang = bool(self.instance and self.instance.solution_confirmed)
+        if 'validation_notes' in self.fields:
+            if not (profile and profile.is_staff_pic) or not gerbang1_sudah_dicentang or sudah_dikonfirmasi:
+                del self.fields['validation_notes']
+
+        # [Gerbang 2] Dikonfirmasi Validator: hanya Validator, muncul setelah
+        # Validasi (teks) terisi
+        validasi_teks_sudah_terisi = bool(self.instance and self.instance.validation_notes)
+        if 'validated' in self.fields:
+            if not (profile and profile.is_validator) or not validasi_teks_sudah_terisi:
+                del self.fields['validated']
+            elif sudah_dikonfirmasi:
+                self.fields['validated'].disabled = True
+            elif self.instance.validated:
+                # Sudah pernah divalidasi -> kunci checkbox (tidak bisa dibatalkan lewat form)
+                self.fields['validated'].disabled = True
 
 
 # =============================================================================

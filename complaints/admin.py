@@ -64,7 +64,10 @@ class ComplaintAdmin(admin.ModelAdmin):
             'fields': ('category', 'description', 'photo_evidence'),
         }),
         ('Penanganan', {
-            'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'sla_deadline', 'resolved_at'),
+            'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'solution_confirmed', 'validation_notes', 'sla_deadline', 'resolved_at'),
+        }),
+        ('Validasi', {
+            'fields': ('validated', 'validated_by', 'validated_at'),
         }),
         ('Kepuasan Pelanggan', {
             'fields': ('satisfaction_rating', 'satisfaction_feedback', 'rated_at'),

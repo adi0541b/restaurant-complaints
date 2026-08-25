@@ -304,22 +304,66 @@ def complaint_detail(request, pk):
     profile = getattr(request.user, 'staff_profile', None)
 
     if request.method == 'POST':
-        form = ComplaintUpdateForm(request.POST, instance=complaint, branch=complaint.branch)
+        # Simpan kondisi SEBELUM form memodifikasi instance, untuk mendeteksi
+        # transisi "baru pertama kali terisi" secara akurat.
+        was_resolution_filled = bool(complaint.resolution_notes)
+        was_internal_filled = bool(complaint.internal_notes)
+        was_solution_confirmed = complaint.solution_confirmed
+        was_validated = complaint.validated
+
+        form = ComplaintUpdateForm(request.POST, instance=complaint, profile=profile)
         if form.is_valid():
             updated = form.save(commit=False)
-            if updated.status == Complaint.Status.SELESAI and not updated.resolved_at:
-                updated.resolved_at = timezone.now()
+
+            # "Ditangani oleh" otomatis terisi siapapun yang menyimpan perubahan.
+            if profile is not None:
+                updated.assigned_to = request.user
+
+            # Transisi status otomatis: Staff mengisi Akar Masalah -> Ditinjau
+            if profile and profile.is_staff_pic:
+                if updated.resolution_notes and not was_resolution_filled:
+                    updated.status = Complaint.Status.DITINJAU
+                # Staff mengisi Solusi -> Diproses
+                if updated.internal_notes and not was_internal_filled:
+                    updated.status = Complaint.Status.DIPROSES
+
+            # [Gerbang 1] Validator mencentang "Solusi sudah benar" -> TIDAK
+            # mengubah status, hanya membuka akses Staff untuk mengisi Validasi.
+            if profile and profile.is_validator:
+                if updated.solution_confirmed and not was_solution_confirmed:
+                    updated.solution_confirmed_by = request.user
+                    updated.solution_confirmed_at = timezone.now()
+
+            # [Gerbang 2] Validator mencentang "Validasi sudah benar" -> Selesai
+            if profile and profile.is_validator:
+                if updated.validated and not was_validated:
+                    updated.status = Complaint.Status.SELESAI
+                    updated.resolved_at = timezone.now()
+                    updated.validated_by = request.user
+                    updated.validated_at = timezone.now()
+
+            # Pengaman: status HARUS "Selesai" setiap kali validated=True tersimpan,
+            # supaya tidak pernah "nyangkut" di status lain karena urutan aksi yang tidak biasa.
+            if updated.validated:
+                updated.status = Complaint.Status.SELESAI
+                if not updated.resolved_at:
+                    updated.resolved_at = timezone.now()
+
             updated.save()
             messages.success(request, f'Komplain {complaint.code} berhasil diperbarui.')
             return redirect('complaints:complaint_detail', pk=pk)
     else:
-        form = ComplaintUpdateForm(instance=complaint, branch=complaint.branch)
+        form = ComplaintUpdateForm(instance=complaint, profile=profile)
+
+    show_penanganan_card = bool(form.fields) or (
+        profile and complaint.internal_notes and (profile.is_validator or profile.is_staff_pic)
+    )
 
     context = {
         'complaint': complaint,
         'form': form,
         'timeline': complaint.timeline.all(),
-        'can_edit': profile is not None,
+        'can_edit': show_penanganan_card,
     }
     return render(request, 'complaints/complaint_detail.html', context)
 

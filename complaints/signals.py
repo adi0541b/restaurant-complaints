@@ -130,9 +130,11 @@ def send_status_update_notification(complaint, old_status):
 
 
 # =============================================================================
-# Notifikasi WHATSAPP - STUB
-# Ganti implementasi ini dengan provider pilihan Anda (Fonnte, Twilio,
-# WhatsApp Business Cloud API, dll). Saat ini hanya logging jika dinonaktifkan.
+# Notifikasi WHATSAPP via Fonnte (https://fonnte.com)
+# Fonnte dipilih karena mudah dipakai untuk UMKM Indonesia: tidak perlu approval
+# WhatsApp Business API resmi, cukup scan QR code dengan nomor WhatsApp biasa.
+# Kalau ingin pakai provider lain (Twilio, WA Cloud API resmi, dll), sesuaikan
+# format request di bawah ini dengan dokumentasi provider tersebut.
 # =============================================================================
 def send_whatsapp_notification(complaint, message, to_staff=False):
     if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
@@ -150,13 +152,22 @@ def send_whatsapp_notification(complaint, message, to_staff=False):
     if not phone_number:
         return
 
+    # Fonnte butuh format nomor internasional tanpa tanda "+" (mis. 628123456789).
+    # Ubah otomatis dari format lokal "08..." kalau perlu.
+    normalized_phone = phone_number.strip().replace(' ', '').replace('-', '')
+    if normalized_phone.startswith('0'):
+        normalized_phone = '62' + normalized_phone[1:]
+    elif normalized_phone.startswith('+'):
+        normalized_phone = normalized_phone[1:]
+
     try:
         import requests  # import lokal agar tidak wajib terpasang jika fitur nonaktif
-        requests.post(
+        response = requests.post(
             settings.WHATSAPP_API_URL,
-            headers={'Authorization': f'Bearer {settings.WHATSAPP_API_TOKEN}'},
-            json={'phone': phone_number, 'message': message},
+            headers={'Authorization': settings.WHATSAPP_API_TOKEN},
+            data={'target': normalized_phone, 'message': message},
             timeout=10,
         )
+        logger.info('[WhatsApp] Respons Fonnte untuk %s: %s', complaint.code, response.text[:300])
     except Exception:
         logger.exception('Gagal mengirim notifikasi WhatsApp untuk %s', complaint.code)
