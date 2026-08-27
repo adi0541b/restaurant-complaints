@@ -5,8 +5,9 @@ from django.core.mail import send_mail
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
+from django.utils import timezone
 
-from .models import Complaint, ComplaintTimelineEntry
+from .models import Complaint, ComplaintTimelineEntry, StaffProfile
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ def send_new_complaint_notifications(complaint):
         except Exception:
             logger.exception('Gagal mengirim email konfirmasi ke pelanggan untuk %s', complaint.code)
 
-    # 2) Notifikasi ke PIC/Staff cabang terkait
+    # 2) Notifikasi ke PIC/Staff outlet terkait
     staff_emails = list(
         complaint.branch.staff_members.filter(
             is_active_pic=True
@@ -99,6 +100,18 @@ def send_new_complaint_notifications(complaint):
         f'Komplain baru {complaint.code} masuk di {complaint.branch.name}. '
         f'Tingkat: {complaint.get_severity_display()}. Segera tindak lanjuti.',
         to_staff=True,
+    )
+
+    # 3) Notifikasi ke WhatsApp QC/Trainer di kota outlet terkait
+    notify_qc_trainers(
+        complaint,
+        f'📥 Komplain baru {complaint.code} masuk di {complaint.branch.name} '
+        f'(Kota {complaint.branch.city.name if complaint.branch.city else "-"}).\n'
+        f'Jenis: {complaint.get_category_display()}'
+        f'{" - " + complaint.detail_item.name if complaint.detail_item else ""}\n'
+        f'Tingkat: {complaint.get_severity_display()}\n'
+        f'Batas SLA: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n'
+        f'Deskripsi: {complaint.description}'
     )
 
 
@@ -136,18 +149,11 @@ def send_status_update_notification(complaint, old_status):
 # Kalau ingin pakai provider lain (Twilio, WA Cloud API resmi, dll), sesuaikan
 # format request di bawah ini dengan dokumentasi provider tersebut.
 # =============================================================================
-def send_whatsapp_notification(complaint, message, to_staff=False):
+def send_whatsapp_message(phone_number, message, log_ref=''):
+    """Fungsi generik: kirim satu pesan WhatsApp ke satu nomor tertentu."""
     if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
-        logger.info('[WhatsApp stub] (nonaktif) Pesan untuk %s: %s', complaint.code, message)
+        logger.info('[WhatsApp stub] (nonaktif) Pesan %s untuk %s: %s', log_ref, phone_number, message)
         return
-
-    phone_number = None
-    if to_staff:
-        first_pic = complaint.branch.staff_members.filter(is_active_pic=True).first()
-        if first_pic:
-            phone_number = first_pic.phone
-    else:
-        phone_number = complaint.customer_phone
 
     if not phone_number:
         return
@@ -168,6 +174,38 @@ def send_whatsapp_notification(complaint, message, to_staff=False):
             data={'target': normalized_phone, 'message': message},
             timeout=10,
         )
-        logger.info('[WhatsApp] Respons Fonnte untuk %s: %s', complaint.code, response.text[:300])
+        logger.info('[WhatsApp] Respons Fonnte %s: %s', log_ref, response.text[:300])
     except Exception:
-        logger.exception('Gagal mengirim notifikasi WhatsApp untuk %s', complaint.code)
+        logger.exception('Gagal mengirim notifikasi WhatsApp %s', log_ref)
+
+
+def send_whatsapp_notification(complaint, message, to_staff=False):
+    """Kirim WhatsApp terkait komplain: ke Staff/PIC outlet (to_staff=True) atau ke pelanggan."""
+    phone_number = None
+    if to_staff:
+        first_pic = complaint.branch.staff_members.filter(is_active_pic=True).first()
+        if first_pic:
+            phone_number = first_pic.phone
+    else:
+        phone_number = complaint.customer_phone
+
+    send_whatsapp_message(phone_number, message, log_ref=complaint.code)
+
+
+def notify_qc_trainers(complaint, message):
+    """Kirim WhatsApp ke SEMUA QC/Trainer yang cakupan kotanya sama dengan
+    kota outlet komplain ini."""
+    city = complaint.branch.city if complaint.branch else None
+    if not city:
+        logger.info(
+            '[WhatsApp] Outlet %s belum diset kotanya, notifikasi QC/Trainer untuk %s dilewati.',
+            complaint.branch, complaint.code,
+        )
+        return
+
+    qc_trainers = StaffProfile.objects.filter(
+        role=StaffProfile.Role.QC_TRAINER, city=city,
+    ).exclude(phone='')
+
+    for profile in qc_trainers:
+        send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> QC/Trainer {profile.user}')

@@ -2,33 +2,41 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 
-from .models import Branch, City, Complaint, SiteSettings, StaffProfile
+from .models import (
+    Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
+    SiteSettings, StaffProfile,
+)
 
 User = get_user_model()
 
 
 class ComplaintSubmissionForm(forms.ModelForm):
-    """Form pengajuan komplain oleh pelanggan (halaman publik, tanpa login)."""
+    """Form input komplain oleh Staff Input Komplain, atas nama pelanggan."""
 
     class Meta:
         model = Complaint
         fields = [
-            'customer_name', 'customer_phone', 'customer_email',
+            'customer_name', 'customer_phone',
             'branch', 'visit_date', 'order_number',
-            'category', 'severity', 'description', 'photo_evidence',
+            'customer_complaint_time', 'cs_handled_time', 'source',
+            'category', 'detail_item', 'severity', 'description', 'photo_evidence',
         ]
         widgets = {
             'customer_name': forms.TextInput(attrs={
-                'class': 'form-control', 'placeholder': 'Nama lengkap Anda'}),
+                'class': 'form-control', 'placeholder': 'Nama lengkap Customer'}),
             'customer_phone': forms.TextInput(attrs={
                 'class': 'form-control', 'placeholder': '08xxxxxxxxxx'}),
-            'customer_email': forms.EmailInput(attrs={
-                'class': 'form-control', 'placeholder': 'email@contoh.com (opsional)'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
             'visit_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'order_number': forms.TextInput(attrs={
                 'class': 'form-control', 'placeholder': 'Nomor struk/pesanan (opsional)'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
+            'customer_complaint_time': forms.DateTimeInput(attrs={
+                'class': 'form-control', 'type': 'datetime-local'}),
+            'cs_handled_time': forms.DateTimeInput(attrs={
+                'class': 'form-control', 'type': 'datetime-local'}),
+            'source': forms.Select(attrs={'class': 'form-select'}),
+            'category': forms.Select(attrs={'class': 'form-select', 'id': 'id_category'}),
+            'detail_item': forms.Select(attrs={'class': 'form-select', 'id': 'id_detail_item'}),
             'severity': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 5,
@@ -36,18 +44,25 @@ class ComplaintSubmissionForm(forms.ModelForm):
             'photo_evidence': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
         labels = {
-            'customer_name': 'Nama Anda',
+            'customer_name': 'Nama Customer',
             'customer_phone': 'No. HP / WhatsApp',
+            'category': 'Jenis Komplain',
+            'detail_item': 'Rincian Komplain',
             'severity': 'Tingkat Keparahan (menurut Anda)',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
-        self.fields['customer_email'].required = False
+        self.fields['source'].queryset = ComplaintSource.objects.filter(is_active=True)
+        self.fields['detail_item'].queryset = ComplaintDetailItem.objects.filter(is_active=True)
         self.fields['order_number'].required = False
         self.fields['visit_date'].required = False
         self.fields['photo_evidence'].required = False
+        self.fields['customer_complaint_time'].required = False
+        self.fields['cs_handled_time'].required = False
+        self.fields['source'].required = False
+        self.fields['detail_item'].required = False
 
 
 class StatusCheckForm(forms.Form):
@@ -82,12 +97,12 @@ class ComplaintUpdateForm(forms.ModelForm):
     (visibilitas bertahap, 2 gerbang konfirmasi Validator):
 
     - Status & Tingkat Keparahan : hanya Staff Input Komplain
-    - Akar Masalah               : hanya Staff/PIC Cabang
-    - Solusi                     : hanya Staff/PIC Cabang, MUNCUL setelah
+    - Akar Masalah               : hanya Staff/PIC Outlet
+    - Solusi                     : hanya Staff/PIC Outlet, MUNCUL setelah
                                     Akar Masalah terisi
     - [Gerbang 1] Solusi Dikonfirmasi Validator : hanya Validator, MUNCUL
                                     setelah Solusi terisi
-    - Validasi (teks)            : hanya Staff/PIC Cabang, MUNCUL setelah
+    - Validasi (teks)            : hanya Staff/PIC Outlet, MUNCUL setelah
                                     Gerbang 1 dicentang Validator
     - [Gerbang 2] Dikonfirmasi Validator : hanya Validator, MUNCUL setelah
                                     Validasi (teks) terisi -> status Selesai
@@ -133,16 +148,16 @@ class ComplaintUpdateForm(forms.ModelForm):
             del self.fields['status']
             del self.fields['severity']
 
-        # Akar Masalah: hanya Staff/PIC Cabang, DAN hanya selama belum dikonfirmasi
-        if not (profile and profile.is_staff_pic) or sudah_dikonfirmasi:
+        # Akar Masalah: hanya Staff/PIC Outlet, DAN hanya selama belum dikonfirmasi
+        if not (profile and profile.can_handle_case) or sudah_dikonfirmasi:
             if 'resolution_notes' in self.fields:
                 del self.fields['resolution_notes']
 
-        # Solusi: hanya Staff/PIC Cabang, muncul setelah Akar Masalah terisi,
+        # Solusi: hanya Staff/PIC Outlet, muncul setelah Akar Masalah terisi,
         # DAN hanya selama belum dikonfirmasi
         akar_masalah_sudah_terisi = bool(self.instance and self.instance.resolution_notes)
         if 'internal_notes' in self.fields:
-            if not (profile and profile.is_staff_pic) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
+            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
                 del self.fields['internal_notes']
 
         # [Gerbang 1] Solusi Dikonfirmasi Validator: hanya Validator,
@@ -154,11 +169,11 @@ class ComplaintUpdateForm(forms.ModelForm):
             elif self.instance.solution_confirmed:
                 self.fields['solution_confirmed'].disabled = True
 
-        # Validasi (teks): hanya Staff/PIC Cabang, muncul setelah Gerbang 1
+        # Validasi (teks): hanya Staff/PIC Outlet, muncul setelah Gerbang 1
         # dicentang Validator, DAN hanya selama belum dikonfirmasi akhir
         gerbang1_sudah_dicentang = bool(self.instance and self.instance.solution_confirmed)
         if 'validation_notes' in self.fields:
-            if not (profile and profile.is_staff_pic) or not gerbang1_sudah_dicentang or sudah_dikonfirmasi:
+            if not (profile and profile.can_handle_case) or not gerbang1_sudah_dicentang or sudah_dikonfirmasi:
                 del self.fields['validation_notes']
 
         # [Gerbang 2] Dikonfirmasi Validator: hanya Validator, muncul setelah
@@ -175,7 +190,7 @@ class ComplaintUpdateForm(forms.ModelForm):
 
 
 # =============================================================================
-# PANEL ADMIN PUSAT: kelola akun staff, cabang, dan identitas perusahaan
+# PANEL ADMIN PUSAT: kelola akun staff, outlet, dan identitas perusahaan
 # =============================================================================
 ADMIN_TEXT_ATTRS = {'class': 'form-control'}
 ADMIN_SELECT_ATTRS = {'class': 'form-select'}
@@ -189,14 +204,14 @@ class StaffAccountCreateForm(UserCreationForm):
     email = forms.EmailField(label='Email', required=False, widget=forms.EmailInput(attrs=ADMIN_TEXT_ATTRS))
     role = forms.ChoiceField(label='Peran', choices=StaffProfile.Role.choices, widget=forms.Select(attrs=ADMIN_SELECT_ATTRS))
     branch = forms.ModelChoiceField(
-        label='Cabang', queryset=Branch.objects.filter(is_active=True), required=False,
+        label='Outlet', queryset=Branch.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Staff/PIC Cabang saja (akses 1 cabang).',
+        help_text='Isi untuk peran Staff/PIC Outlet saja (akses 1 outlet).',
     )
     city = forms.ModelChoiceField(
         label='Kota', queryset=City.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Manager Kota saja (akses semua cabang di kota itu).',
+        help_text='Isi untuk peran Manager Kota atau QC/Trainer (akses semua outlet di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -232,14 +247,14 @@ class StaffAccountEditForm(forms.ModelForm):
     """Form mengubah akun yang sudah ada: data user, peran, cakupan akses, dan opsional ganti password."""
     role = forms.ChoiceField(label='Peran', choices=StaffProfile.Role.choices, widget=forms.Select(attrs=ADMIN_SELECT_ATTRS))
     branch = forms.ModelChoiceField(
-        label='Cabang', queryset=Branch.objects.filter(is_active=True), required=False,
+        label='Outlet', queryset=Branch.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Staff/PIC Cabang saja (akses 1 cabang).',
+        help_text='Isi untuk peran Staff/PIC Outlet saja (akses 1 outlet).',
     )
     city = forms.ModelChoiceField(
         label='Kota', queryset=City.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Manager Kota saja (akses semua cabang di kota itu).',
+        help_text='Isi untuk peran Manager Kota atau QC/Trainer (akses semua outlet di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -303,7 +318,7 @@ class CityAdminForm(forms.ModelForm):
 
 
 class BranchAdminForm(forms.ModelForm):
-    """Form tambah/ubah cabang, untuk Admin Pusat."""
+    """Form tambah/ubah outlet, untuk Admin Pusat."""
 
     class Meta:
         model = Branch
@@ -316,7 +331,7 @@ class BranchAdminForm(forms.ModelForm):
             'phone': forms.TextInput(attrs=ADMIN_TEXT_ATTRS),
             'manager': forms.Select(attrs=ADMIN_SELECT_ATTRS),
         }
-        labels = {'is_active': 'Cabang Aktif'}
+        labels = {'is_active': 'Outlet Aktif'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -338,3 +353,29 @@ class SiteSettingsForm(forms.ModelForm):
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
         labels = {'company_name': 'Nama Perusahaan', 'logo': 'Logo Perusahaan'}
+
+
+class ComplaintSourceForm(forms.ModelForm):
+    """Form tambah/ubah Sumber Komplain. HANYA Admin Pusat yang berhak."""
+
+    class Meta:
+        model = ComplaintSource
+        fields = ['name', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: WhatsApp'}),
+        }
+        labels = {'is_active': 'Aktif'}
+
+
+class ComplaintDetailItemForm(forms.ModelForm):
+    """Form tambah/ubah Rincian Komplain (di bawah Komplain Produk/Servis).
+    HANYA Admin Pusat yang berhak."""
+
+    class Meta:
+        model = ComplaintDetailItem
+        fields = ['main_type', 'name', 'is_active']
+        widgets = {
+            'main_type': forms.Select(attrs=ADMIN_SELECT_ATTRS),
+            'name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: Kualitas Makanan'}),
+        }
+        labels = {'main_type': 'Jenis Komplain', 'is_active': 'Aktif'}

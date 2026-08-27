@@ -15,6 +15,8 @@ from django.utils import timezone
 from .forms import (
     BranchAdminForm,
     CityAdminForm,
+    ComplaintDetailItemForm,
+    ComplaintSourceForm,
     ComplaintSubmissionForm,
     ComplaintUpdateForm,
     SatisfactionRatingForm,
@@ -23,7 +25,10 @@ from .forms import (
     StaffAccountEditForm,
     StatusCheckForm,
 )
-from .models import Branch, City, Complaint, SiteSettings, StaffProfile
+from .models import (
+    Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
+    SiteSettings, StaffProfile,
+)
 
 User = get_user_model()
 
@@ -59,7 +64,7 @@ def input_staff_required(view_func):
 def home_submission(request):
     """Form input komplain. HANYA bisa diakses oleh user berperan Staff Input Komplain.
     User lain yang login otomatis dialihkan ke Dashboard.
-    Mendukung prefill via QR/URL: ?cabang=<kode_cabang>&meja=<nomor_meja>
+    Mendukung prefill via QR/URL: ?cabang=<kode_outlet>&meja=<nomor_meja>
     """
     profile = getattr(request.user, 'staff_profile', None)
     if profile is None or not profile.is_input_staff:
@@ -73,6 +78,7 @@ def home_submission(request):
         initial_branch = Branch.objects.filter(code__iexact=branch_code, is_active=True).first()
         if initial_branch:
             initial['branch'] = initial_branch.pk
+    initial['cs_handled_time'] = timezone.localtime(timezone.now()).strftime('%Y-%m-%dT%H:%M')
 
     if request.method == 'POST':
         form = ComplaintSubmissionForm(request.POST, request.FILES)
@@ -93,6 +99,7 @@ def home_submission(request):
         'branches': Branch.objects.filter(is_active=True).select_related('city').order_by('name'),
         'initial_branch_id': initial_branch.pk if initial_branch else None,
         'initial_city_id': initial_branch.city_id if initial_branch else None,
+        'detail_items': ComplaintDetailItem.objects.filter(is_active=True).order_by('main_type', 'name'),
     }
     return render(request, 'complaints/home.html', context)
 
@@ -162,15 +169,15 @@ def _visible_complaints_for(user):
     if profile is None:
         return qs.none()
     if profile.has_full_visibility:
-        # Admin Pusat, Manager Wilayah, dan Staff Input Komplain melihat SEMUA cabang.
+        # Admin Pusat, Manager Wilayah, dan Staff Input Komplain melihat SEMUA outlet.
         return qs
-    if profile.is_manager:
-        # Manager Kota: semua cabang yang berada di kota yang sama dengan dirinya.
+    if profile.is_manager or profile.is_qc_trainer:
+        # Manager Kota & QC/Trainer: semua outlet yang berada di kota yang sama.
         if profile.city_id:
             return qs.filter(branch__city=profile.city)
         return qs.none()
     if profile.is_staff_pic:
-        # Staff/PIC Cabang: hanya cabang spesifiknya sendiri.
+        # Staff/PIC Outlet: hanya outlet spesifiknya sendiri.
         if profile.branch_id:
             return qs.filter(branch=profile.branch)
         return qs.none()
@@ -319,11 +326,11 @@ def complaint_detail(request, pk):
             if profile is not None:
                 updated.assigned_to = request.user
 
-            # Transisi status otomatis: Staff mengisi Akar Masalah -> Ditinjau
-            if profile and profile.is_staff_pic:
+            # Transisi status otomatis: Staff/QC-Trainer mengisi Akar Masalah -> Ditinjau
+            if profile and profile.can_handle_case:
                 if updated.resolution_notes and not was_resolution_filled:
                     updated.status = Complaint.Status.DITINJAU
-                # Staff mengisi Solusi -> Diproses
+                # Staff/QC-Trainer mengisi Solusi -> Diproses
                 if updated.internal_notes and not was_internal_filled:
                     updated.status = Complaint.Status.DIPROSES
 
@@ -356,7 +363,7 @@ def complaint_detail(request, pk):
         form = ComplaintUpdateForm(instance=complaint, profile=profile)
 
     show_penanganan_card = bool(form.fields) or (
-        profile and complaint.internal_notes and (profile.is_validator or profile.is_staff_pic)
+        profile and complaint.internal_notes and (profile.is_validator or profile.can_handle_case)
     )
 
     context = {
@@ -408,9 +415,11 @@ def export_complaints_excel(request):
     ws.title = 'Data Komplain'
 
     headers = [
-        'Kode', 'Nama Pelanggan', 'No. HP', 'Email', 'Cabang', 'No. Meja',
-        'Tanggal Kunjungan', 'No. Pesanan', 'Kategori', 'Tingkat Keparahan',
-        'Status', 'Deskripsi', 'Ditangani Oleh', 'Catatan Penyelesaian',
+        'Kode', 'Nama Pelanggan', 'No. HP', 'Email', 'Outlet', 'No. Meja',
+        'Tanggal Kunjungan', 'No. Pesanan', 'Sumber Komplain',
+        'Jam Komplain Masuk', 'Jam Ditangani CS',
+        'Jenis Komplain', 'Rincian Komplain', 'Tingkat Keparahan',
+        'Status', 'Deskripsi', 'Ditangani Oleh', 'Akar Masalah',
         'Dilaporkan Pada', 'Batas SLA', 'Lewat SLA?', 'Selesai Pada',
         'Rating Kepuasan', 'Masukan Tambahan',
     ]
@@ -433,24 +442,30 @@ def export_complaints_excel(request):
         ws.cell(row=row_idx, column=6, value=c.table_number)
         ws.cell(row=row_idx, column=7, value=c.visit_date.strftime('%d-%m-%Y') if c.visit_date else '')
         ws.cell(row=row_idx, column=8, value=c.order_number)
-        ws.cell(row=row_idx, column=9, value=c.get_category_display())
-        ws.cell(row=row_idx, column=10, value=c.get_severity_display())
-        ws.cell(row=row_idx, column=11, value=c.get_status_display())
-        ws.cell(row=row_idx, column=12, value=c.description)
-        ws.cell(row=row_idx, column=13, value=str(c.assigned_to) if c.assigned_to else '')
-        ws.cell(row=row_idx, column=14, value=c.resolution_notes)
-        ws.cell(row=row_idx, column=15,
+        ws.cell(row=row_idx, column=9, value=str(c.source) if c.source else '')
+        ws.cell(row=row_idx, column=10,
+                value=timezone.localtime(c.customer_complaint_time).strftime('%d-%m-%Y %H:%M') if c.customer_complaint_time else '')
+        ws.cell(row=row_idx, column=11,
+                value=timezone.localtime(c.cs_handled_time).strftime('%d-%m-%Y %H:%M') if c.cs_handled_time else '')
+        ws.cell(row=row_idx, column=12, value=c.get_category_display())
+        ws.cell(row=row_idx, column=13, value=c.detail_item.name if c.detail_item else '')
+        ws.cell(row=row_idx, column=14, value=c.get_severity_display())
+        ws.cell(row=row_idx, column=15, value=c.get_status_display())
+        ws.cell(row=row_idx, column=16, value=c.description)
+        ws.cell(row=row_idx, column=17, value=str(c.assigned_to) if c.assigned_to else '')
+        ws.cell(row=row_idx, column=18, value=c.resolution_notes)
+        ws.cell(row=row_idx, column=19,
                 value=timezone.localtime(c.created_at).strftime('%d-%m-%Y %H:%M') if c.created_at else '')
-        ws.cell(row=row_idx, column=16,
+        ws.cell(row=row_idx, column=20,
                 value=timezone.localtime(c.sla_deadline).strftime('%d-%m-%Y %H:%M') if c.sla_deadline else '')
-        ws.cell(row=row_idx, column=17, value='Ya' if c.is_overdue else 'Tidak')
-        ws.cell(row=row_idx, column=18,
+        ws.cell(row=row_idx, column=21, value='Ya' if c.is_overdue else 'Tidak')
+        ws.cell(row=row_idx, column=22,
                 value=timezone.localtime(c.resolved_at).strftime('%d-%m-%Y %H:%M') if c.resolved_at else '')
-        ws.cell(row=row_idx, column=19, value=c.satisfaction_rating)
-        ws.cell(row=row_idx, column=20, value=c.satisfaction_feedback)
+        ws.cell(row=row_idx, column=23, value=c.satisfaction_rating)
+        ws.cell(row=row_idx, column=24, value=c.satisfaction_feedback)
 
     # Lebar kolom otomatis (sederhana, dibatasi agar tidak terlalu lebar)
-    widths = [12, 20, 15, 22, 22, 10, 16, 16, 18, 16, 14, 40, 18, 35, 18, 18, 12, 18, 14, 35]
+    widths = [12, 20, 15, 22, 22, 10, 16, 16, 16, 18, 18, 16, 20, 16, 14, 40, 18, 35, 18, 18, 12, 18, 14, 35]
     for col_idx, width in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
 
@@ -467,7 +482,7 @@ def export_complaints_excel(request):
 
 
 # =============================================================================
-# PANEL ADMIN PUSAT: kelola akun staff, cabang, dan identitas perusahaan
+# PANEL ADMIN PUSAT: kelola akun staff, outlet, dan identitas perusahaan
 # =============================================================================
 @admin_pusat_required
 def admin_panel(request):
@@ -549,7 +564,7 @@ def branch_create(request):
         form = BranchAdminForm(request.POST)
         if form.is_valid():
             branch = form.save()
-            messages.success(request, f'Cabang "{branch.name}" berhasil ditambahkan.')
+            messages.success(request, f'Outlet "{branch.name}" berhasil ditambahkan.')
             return redirect('complaints:branch_list')
     else:
         form = BranchAdminForm()
@@ -563,7 +578,7 @@ def branch_edit(request, pk):
         form = BranchAdminForm(request.POST, instance=branch)
         if form.is_valid():
             form.save()
-            messages.success(request, f'Cabang "{branch.name}" berhasil diperbarui.')
+            messages.success(request, f'Outlet "{branch.name}" berhasil diperbarui.')
             return redirect('complaints:branch_list')
     else:
         form = BranchAdminForm(instance=branch)
@@ -623,4 +638,80 @@ def city_edit(request, pk):
         form = CityAdminForm(instance=city)
     return render(request, 'complaints/city_form.html', {
         'form': form, 'is_create': False, 'city': city,
+    })
+
+
+# =============================================================================
+# PANEL ADMIN PUSAT: kelola SUMBER KOMPLAIN (hanya Admin Pusat)
+# =============================================================================
+@admin_pusat_required
+def source_list(request):
+    sources = ComplaintSource.objects.all().order_by('name')
+    return render(request, 'complaints/source_list.html', {'sources': sources})
+
+
+@admin_pusat_required
+def source_create(request):
+    if request.method == 'POST':
+        form = ComplaintSourceForm(request.POST)
+        if form.is_valid():
+            source = form.save()
+            messages.success(request, f'Sumber Komplain "{source.name}" berhasil ditambahkan.')
+            return redirect('complaints:source_list')
+    else:
+        form = ComplaintSourceForm()
+    return render(request, 'complaints/source_form.html', {'form': form, 'is_create': True})
+
+
+@admin_pusat_required
+def source_edit(request, pk):
+    source = get_object_or_404(ComplaintSource, pk=pk)
+    if request.method == 'POST':
+        form = ComplaintSourceForm(request.POST, instance=source)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Sumber Komplain "{source.name}" berhasil diperbarui.')
+            return redirect('complaints:source_list')
+    else:
+        form = ComplaintSourceForm(instance=source)
+    return render(request, 'complaints/source_form.html', {
+        'form': form, 'is_create': False, 'source': source,
+    })
+
+
+# =============================================================================
+# PANEL ADMIN PUSAT: kelola RINCIAN KOMPLAIN (hanya Admin Pusat)
+# =============================================================================
+@admin_pusat_required
+def detail_item_list(request):
+    items = ComplaintDetailItem.objects.all().order_by('main_type', 'name')
+    return render(request, 'complaints/detail_item_list.html', {'items': items})
+
+
+@admin_pusat_required
+def detail_item_create(request):
+    if request.method == 'POST':
+        form = ComplaintDetailItemForm(request.POST)
+        if form.is_valid():
+            item = form.save()
+            messages.success(request, f'Rincian Komplain "{item.name}" berhasil ditambahkan.')
+            return redirect('complaints:detail_item_list')
+    else:
+        form = ComplaintDetailItemForm()
+    return render(request, 'complaints/detail_item_form.html', {'form': form, 'is_create': True})
+
+
+@admin_pusat_required
+def detail_item_edit(request, pk):
+    item = get_object_or_404(ComplaintDetailItem, pk=pk)
+    if request.method == 'POST':
+        form = ComplaintDetailItemForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Rincian Komplain "{item.name}" berhasil diperbarui.')
+            return redirect('complaints:detail_item_list')
+    else:
+        form = ComplaintDetailItemForm(instance=item)
+    return render(request, 'complaints/detail_item_form.html', {
+        'form': form, 'is_create': False, 'item': item,
     })

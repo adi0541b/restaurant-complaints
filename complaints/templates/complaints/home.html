@@ -8,10 +8,9 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        <h3 style="margin-top:0;">Data Anda</h3>
+        <h3 style="margin-top:0;">Data Customer</h3>
         {{ form.customer_name.label_tag }}{{ form.customer_name }}
         {{ form.customer_phone.label_tag }}{{ form.customer_phone }}
-        {{ form.customer_email.label_tag }}{{ form.customer_email }}
 
         <h3>Detail Kunjungan</h3>
         <label for="city_filter">Kota</label>
@@ -22,9 +21,9 @@
             {% endfor %}
         </select>
 
-        <label for="id_branch">Cabang</label>
+        <label for="id_branch">Outlet</label>
         <select name="branch" id="id_branch" class="form-select" required>
-            <option value="">-- Pilih Cabang --</option>
+            <option value="">-- Pilih Outlet --</option>
             {% for b in branches %}
                 <option value="{{ b.id }}" data-city="{{ b.city_id|default:'' }}" {% if b.id == initial_branch_id %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
             {% endfor %}
@@ -32,9 +31,21 @@
 
         {{ form.visit_date.label_tag }}{{ form.visit_date }}
         {{ form.order_number.label_tag }}{{ form.order_number }}
+        {{ form.customer_complaint_time.label_tag }}{{ form.customer_complaint_time }}
+        {{ form.cs_handled_time.label_tag }}{{ form.cs_handled_time }}
+        {{ form.source.label_tag }}{{ form.source }}
 
         <h3>Detail Komplain</h3>
         {{ form.category.label_tag }}{{ form.category }}
+
+        <label for="id_detail_item">Rincian Komplain</label>
+        <select name="detail_item" id="id_detail_item" class="form-select">
+            <option value="">-- Pilih Rincian Komplain --</option>
+            {% for d in detail_items %}
+                <option value="{{ d.id }}" data-type="{{ d.main_type }}" {% if d.id == form.detail_item.value|default_if_none:'' %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+        </select>
+
         {{ form.severity.label_tag }}{{ form.severity }}
         {{ form.description.label_tag }}{{ form.description }}
         {{ form.photo_evidence.label_tag }}{{ form.photo_evidence }}
@@ -54,11 +65,11 @@
     function filterBranches() {
         var cityId = cityFilter.value;
         allOptions.forEach(function (opt) {
-            if (!opt.value) { opt.hidden = false; return; } // opsi "-- Pilih Cabang --" selalu tampil
+            if (!opt.value) { opt.hidden = false; return; } // opsi "-- Pilih Outlet --" selalu tampil
             var matches = !cityId || opt.getAttribute('data-city') === cityId;
             opt.hidden = !matches;
         });
-        // Reset pilihan cabang kalau cabang yang sedang terpilih tidak cocok dengan kota baru
+        // Reset pilihan outlet kalau outlet yang sedang terpilih tidak cocok dengan kota baru
         var selectedOpt = branchSelect.options[branchSelect.selectedIndex];
         if (selectedOpt && selectedOpt.hidden) {
             branchSelect.value = '';
@@ -67,6 +78,29 @@
 
     cityFilter.addEventListener('change', filterBranches);
     filterBranches(); // jalankan sekali saat halaman dimuat (menghormati prefill dari QR code)
+
+    // Filter Rincian Komplain berdasarkan Jenis Komplain (Produk/Servis)
+    var categorySelect = document.getElementById('id_category');
+    var detailSelect = document.getElementById('id_detail_item');
+    var allDetailOptions = Array.prototype.slice.call(detailSelect.options);
+
+    function filterDetailItems() {
+        var type = categorySelect.value;
+        allDetailOptions.forEach(function (opt) {
+            if (!opt.value) { opt.hidden = false; return; } // opsi "-- Pilih Rincian Komplain --" selalu tampil
+            var matches = !type || opt.getAttribute('data-type') === type;
+            opt.hidden = !matches;
+        });
+        var selectedDetail = detailSelect.options[detailSelect.selectedIndex];
+        if (selectedDetail && selectedDetail.hidden) {
+            detailSelect.value = '';
+        }
+    }
+
+    if (categorySelect && detailSelect) {
+        categorySelect.addEventListener('change', filterDetailItems);
+        filterDetailItems();
+    }
 })();
 </script>
 {% endblock %}

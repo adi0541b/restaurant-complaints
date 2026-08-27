@@ -10,7 +10,7 @@
 <div class="card">
     <table>
         <thead>
-            <tr><th>Nama Kota</th><th>Jumlah Cabang</th><th>Aktif</th><th></th></tr>
+            <tr><th>Nama Kota</th><th>Jumlah Outlet</th><th>Aktif</th><th></th></tr>
         </thead>
         <tbody>
         {% for c in cities %}
@@ -21,7 +21,7 @@
                 <td><a href="{% url 'complaints:city_edit' c.pk %}" class="btn btn-outline">Edit</a></td>
             </tr>
         {% empty %}
-            <tr><td colspan="4">Belum ada kota. Tambahkan dulu sebelum membuat cabang.</td></tr>
+            <tr><td colspan="4">Belum ada kota. Tambahkan dulu sebelum membuat outlet.</td></tr>
         {% endfor %}
         </tbody>
     </table>

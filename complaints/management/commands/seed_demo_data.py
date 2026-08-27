@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from complaints.models import Branch, City, Complaint, StaffProfile
+from complaints.models import (
+    Branch, City, Complaint, ComplaintDetailItem, ComplaintSource, StaffProfile,
+)
 
 User = get_user_model()
 
@@ -20,19 +22,31 @@ CUSTOMER_NAMES = [
     'Maya Sari', 'Agus Setiawan', 'Lina Marlina', 'Hendra Gunawan', 'Putri Wulandari',
 ]
 
+COMPLAINT_SOURCES = [
+    'WhatsApp', 'Instagram', 'TikTok', 'Facebook', 'GMaps',
+    'Gofood', 'Grabfood', 'ShopeeFood', 'QC-Team',
+]
+
+DETAIL_ITEMS_PRODUK = ['Kualitas Makanan', 'Jumlah Produk Tidak Sesuai', 'Tampilan Produk']
+DETAIL_ITEMS_SERVIS = [
+    'Pelayanan Staff', 'Kecepatan Penyajian', 'Kebersihan',
+    'Fasilitas/Kenyamanan', 'Pembayaran/Struk',
+]
+
 SAMPLE_DESCRIPTIONS = {
-    'makanan': 'Nasi goreng yang saya pesan rasanya terlalu asin dan porsinya tidak sesuai menu.',
-    'pelayanan': 'Pelayan kurang responsif, sudah menunggu 20 menit belum juga dicatat pesanannya.',
-    'kebersihan': 'Meja dan kursi terasa masih kotor saat kami datang, ada sisa makanan pengunjung sebelumnya.',
-    'kecepatan': 'Pesanan baru datang setelah 45 menit padahal restoran sedang sepi.',
-    'fasilitas': 'AC di area smoking room tidak berfungsi, ruangan sangat panas dan pengap.',
-    'pembayaran': 'Struk pembayaran tidak sesuai dengan pesanan, ada item yang double charge.',
-    'lainnya': 'Ingin memberi masukan terkait tata letak parkir yang kurang jelas.',
+    'Kualitas Makanan': 'Nasi goreng yang saya pesan rasanya terlalu asin dan porsinya tidak sesuai menu.',
+    'Pelayanan Staff': 'Pelayan kurang responsif, sudah menunggu 20 menit belum juga dicatat pesanannya.',
+    'Kebersihan': 'Meja dan kursi terasa masih kotor saat kami datang, ada sisa makanan pengunjung sebelumnya.',
+    'Kecepatan Penyajian': 'Pesanan baru datang setelah 45 menit padahal restoran sedang sepi.',
+    'Fasilitas/Kenyamanan': 'AC di area smoking room tidak berfungsi, ruangan sangat panas dan pengap.',
+    'Pembayaran/Struk': 'Struk pembayaran tidak sesuai dengan pesanan, ada item yang double charge.',
+    'Jumlah Produk Tidak Sesuai': 'Jumlah ayam goreng yang diterima kurang dari yang dipesan.',
+    'Tampilan Produk': 'Penyajian makanan terlihat berantakan dan kurang menarik.',
 }
 
 
 class Command(BaseCommand):
-    help = 'Mengisi data demo: cabang, staff, dan contoh komplain.'
+    help = 'Mengisi data demo: outlet, staff, dan contoh komplain.'
 
     def add_arguments(self, parser):
         parser.add_argument('--complaints', type=int, default=25,
@@ -40,6 +54,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Membuat data demo...')
+
+        # --- Sumber Komplain & Rincian Komplain (data master) ---
+        for name in COMPLAINT_SOURCES:
+            ComplaintSource.objects.get_or_create(name=name)
+        for name in DETAIL_ITEMS_PRODUK:
+            ComplaintDetailItem.objects.get_or_create(
+                main_type=ComplaintDetailItem.MainType.PRODUK, name=name,
+            )
+        for name in DETAIL_ITEMS_SERVIS:
+            ComplaintDetailItem.objects.get_or_create(
+                main_type=ComplaintDetailItem.MainType.SERVIS, name=name,
+            )
 
         # --- Admin Pusat ---
         admin_user, created = User.objects.get_or_create(
@@ -54,7 +80,7 @@ class Command(BaseCommand):
             user=admin_user, defaults={'role': StaffProfile.Role.ADMIN, 'phone': '081200000001'},
         )
 
-        # --- Kota + Cabang + Manager Kota + Staff ---
+        # --- Kota + Outlet + Manager Kota + Staff ---
         branches = []
         for i, b in enumerate(BRANCHES, start=1):
             city, _ = City.objects.get_or_create(name=b['city'])
@@ -68,8 +94,8 @@ class Command(BaseCommand):
                 branch.save(update_fields=['city'])
             branches.append(branch)
 
-            # Manager Kota: satu akun manager per kota (bukan per cabang), akses
-            # semua cabang yang berada di kota tsb.
+            # Manager Kota: satu akun manager per kota (bukan per outlet), akses
+            # semua outlet yang berada di kota tsb.
             manager_username = f"manager_{b['city'].lower()}"
             manager_user, created = User.objects.get_or_create(
                 username=manager_username,
@@ -100,7 +126,7 @@ class Command(BaseCommand):
                 defaults={'role': StaffProfile.Role.STAFF, 'branch': branch, 'phone': f'08140000000{i}'},
             )
 
-        # --- Manager Wilayah (akses semua kota/cabang) ---
+        # --- Manager Wilayah (akses semua kota/outlet) ---
         area_manager_user, created = User.objects.get_or_create(
             username='managerwilayah',
             defaults={'first_name': 'Manager', 'last_name': 'Wilayah',
@@ -114,7 +140,7 @@ class Command(BaseCommand):
             defaults={'role': StaffProfile.Role.AREA_MANAGER, 'phone': '081200000002'},
         )
 
-        # --- Staff Input Komplain (akses semua cabang, khusus input komplain) ---
+        # --- Staff Input Komplain (akses semua outlet, khusus input komplain) ---
         input_staff_user, created = User.objects.get_or_create(
             username='inputkomplain',
             defaults={'first_name': 'Staff', 'last_name': 'Input Komplain',
@@ -128,7 +154,7 @@ class Command(BaseCommand):
             defaults={'role': StaffProfile.Role.INPUT_STAFF, 'phone': '081200000003'},
         )
 
-        # --- Validator (akses semua cabang, khusus validasi solusi) ---
+        # --- Validator (akses semua outlet, khusus validasi solusi) ---
         validator_user, created = User.objects.get_or_create(
             username='validator',
             defaults={'first_name': 'Staff', 'last_name': 'Validator',
@@ -144,19 +170,22 @@ class Command(BaseCommand):
 
         # --- Contoh komplain ---
         n = options['complaints']
-        categories = list(Complaint.Category.values)
+        all_detail_items = list(ComplaintDetailItem.objects.all())
+        all_sources = list(ComplaintSource.objects.all())
         severities = list(Complaint.Severity.values)
         statuses = list(Complaint.Status.values)
 
         created_count = 0
         for i in range(n):
             branch = random.choice(branches)
-            category = random.choice(categories)
+            detail_item = random.choice(all_detail_items) if all_detail_items else None
+            category = detail_item.main_type if detail_item else Complaint.Category.SERVIS
             severity = random.choice(severities)
             status = random.choices(
                 statuses, weights=[0.2, 0.15, 0.2, 0.35, 0.1]
             )[0]
             days_ago = random.randint(0, 20)
+            complaint_time = timezone.now() - timedelta(days=days_ago, hours=random.randint(0, 23))
 
             complaint = Complaint.objects.create(
                 customer_name=random.choice(CUSTOMER_NAMES),
@@ -165,12 +194,18 @@ class Command(BaseCommand):
                 branch=branch,
                 table_number=str(random.randint(1, 30)),
                 category=category,
+                detail_item=detail_item,
                 severity=severity,
-                description=SAMPLE_DESCRIPTIONS.get(category, 'Komplain pelanggan.'),
+                description=SAMPLE_DESCRIPTIONS.get(
+                    detail_item.name if detail_item else '', 'Komplain pelanggan.'
+                ),
                 status=status,
+                source=random.choice(all_sources) if all_sources else None,
+                customer_complaint_time=complaint_time,
+                cs_handled_time=complaint_time + timedelta(minutes=random.randint(2, 30)),
             )
             # Geser waktu dibuat agar variatif (beberapa lampau, untuk demo overdue)
-            created_at = timezone.now() - timedelta(days=days_ago, hours=random.randint(0, 23))
+            created_at = complaint_time
             Complaint.objects.filter(pk=complaint.pk).update(created_at=created_at)
             complaint.refresh_from_db()
             complaint.sla_deadline = complaint.calculate_sla_deadline()
@@ -183,12 +218,12 @@ class Command(BaseCommand):
             created_count += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'Selesai. {len(branches)} cabang di {City.objects.count()} kota, '
+            f'Selesai. {len(branches)} outlet di {City.objects.count()} kota, '
             f'{created_count} contoh komplain dibuat.'
         ))
         self.stdout.write('Login admin pusat: adminpusat / admin12345')
         self.stdout.write('Login manager wilayah (semua kota): managerwilayah / wilayah12345')
-        self.stdout.write('Login staff input komplain (semua cabang): inputkomplain / input12345')
-        self.stdout.write('Login validator (semua cabang): validator / validator12345')
+        self.stdout.write('Login staff input komplain (semua outlet): inputkomplain / input12345')
+        self.stdout.write('Login validator (semua outlet): validator / validator12345')
         self.stdout.write('Login manager kota: manager_jakarta / manager_bandung / manager_semarang, password: manager12345')
-        self.stdout.write('Login staff cabang: staff1 / staff2 / staff3, password: staff12345')
+        self.stdout.write('Login staff outlet: staff1 / staff2 / staff3, password: staff12345')

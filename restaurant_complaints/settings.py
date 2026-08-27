@@ -1,7 +1,7 @@
 """
 Django settings for restaurant_complaints project.
 
-Aplikasi Manajemen Komplain Pelanggan - Restoran Multi-Cabang
+Aplikasi Manajemen Komplain Pelanggan - Restoran Multi-Outlet
 """
 
 import os
@@ -120,7 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internasionalisasi (Indonesia)
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = 'id'
-TIME_ZONE = 'Asia/Makassar'  # WITA - sesuaikan dengan zona waktu cabang Anda
+TIME_ZONE = 'Asia/Makassar'  # WITA - sesuaikan dengan zona waktu outlet Anda
 USE_I18N = True
 USE_TZ = True
 

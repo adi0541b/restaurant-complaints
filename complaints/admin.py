@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Branch, City, Complaint, ComplaintTimelineEntry, SiteSettings, StaffProfile
+from .models import (
+    Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
+    ComplaintTimelineEntry, SiteSettings, StaffProfile,
+)
 
 
 @admin.register(SiteSettings)
@@ -17,6 +20,20 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 class CityAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'created_at')
     list_filter = ('is_active',)
+    search_fields = ('name',)
+
+
+@admin.register(ComplaintSource)
+class ComplaintSourceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+
+
+@admin.register(ComplaintDetailItem)
+class ComplaintDetailItemAdmin(admin.ModelAdmin):
+    list_display = ('name', 'main_type', 'is_active', 'created_at')
+    list_filter = ('main_type', 'is_active')
     search_fields = ('name',)
 
 
@@ -48,7 +65,7 @@ class ComplaintAdmin(admin.ModelAdmin):
         'code', 'customer_name', 'branch', 'category', 'severity_badge',
         'status_badge', 'overdue_flag', 'created_at',
     )
-    list_filter = ('status', 'severity', 'category', 'branch')
+    list_filter = ('status', 'severity', 'category', 'branch', 'source')
     search_fields = ('code', 'customer_name', 'customer_phone', 'customer_email', 'description')
     readonly_fields = ('code', 'sla_deadline', 'created_at', 'updated_at')
     inlines = [TimelineInline]
@@ -58,10 +75,11 @@ class ComplaintAdmin(admin.ModelAdmin):
             'fields': ('customer_name', 'customer_phone', 'customer_email'),
         }),
         ('Konteks Kejadian', {
-            'fields': ('branch', 'table_number', 'visit_date', 'order_number'),
+            'fields': ('branch', 'table_number', 'visit_date', 'order_number',
+                       'customer_complaint_time', 'cs_handled_time', 'source'),
         }),
         ('Isi Komplain', {
-            'fields': ('category', 'description', 'photo_evidence'),
+            'fields': ('category', 'detail_item', 'description', 'photo_evidence'),
         }),
         ('Penanganan', {
             'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'solution_confirmed', 'validation_notes', 'sla_deadline', 'resolved_at'),

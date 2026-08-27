@@ -1,0 +1,28 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kelola Sumber Komplain - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Kelola Sumber Komplain</h1>
+    <a href="{% url 'complaints:source_create' %}" class="btn btn-primary">+ Tambah Sumber Baru</a>
+</div>
+<p class="subtitle"><a href="{% url 'complaints:admin_panel' %}">&larr; Kembali ke Panel Admin</a></p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Nama Sumber</th><th>Aktif</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for s in sources %}
+            <tr>
+                <td>{{ s.name }}</td>
+                <td>{% if s.is_active %}✅{% else %}❌{% endif %}</td>
+                <td><a href="{% url 'complaints:source_edit' s.pk %}" class="btn btn-outline">Edit</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3">Belum ada sumber komplain.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

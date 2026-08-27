@@ -2,7 +2,7 @@
 {% block title %}Panel Admin Pusat - {{ BRAND_NAME }}{% endblock %}
 {% block content %}
 <h1>Panel Admin Pusat</h1>
-<p class="subtitle">Kelola akun pengguna, cabang, dan identitas perusahaan.</p>
+<p class="subtitle">Kelola akun pengguna, outlet, dan identitas perusahaan.</p>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;">
     <div class="card">
@@ -12,13 +12,23 @@
     </div>
     <div class="card">
         <h2 style="margin-top:0;">🏙️ Kelola Kota</h2>
-        <p style="color:var(--text-muted);">{{ total_cities }} kota terdaftar. Kota dipakai untuk mengelompokkan cabang & cakupan akses Manager Kota.</p>
+        <p style="color:var(--text-muted);">{{ total_cities }} kota terdaftar. Kota dipakai untuk mengelompokkan outlet & cakupan akses Manager Kota.</p>
         <a href="{% url 'complaints:city_list' %}" class="btn btn-primary">Buka Daftar Kota</a>
     </div>
     <div class="card">
-        <h2 style="margin-top:0;">🏬 Kelola Cabang</h2>
-        <p style="color:var(--text-muted);">{{ total_branches }} cabang terdaftar.</p>
-        <a href="{% url 'complaints:branch_list' %}" class="btn btn-primary">Buka Daftar Cabang</a>
+        <h2 style="margin-top:0;">🏬 Kelola Outlet</h2>
+        <p style="color:var(--text-muted);">{{ total_branches }} outlet terdaftar.</p>
+        <a href="{% url 'complaints:branch_list' %}" class="btn btn-primary">Buka Daftar Outlet</a>
+    </div>
+    <div class="card">
+        <h2 style="margin-top:0;">📢 Kelola Sumber Komplain</h2>
+        <p style="color:var(--text-muted);">Daftar sumber/kanal masuknya komplain (WhatsApp, Instagram, GMaps, dsb).</p>
+        <a href="{% url 'complaints:source_list' %}" class="btn btn-primary">Buka Daftar Sumber Komplain</a>
+    </div>
+    <div class="card">
+        <h2 style="margin-top:0;">📋 Kelola Rincian Komplain</h2>
+        <p style="color:var(--text-muted);">Daftar rincian di bawah Komplain Produk & Komplain Servis.</p>
+        <a href="{% url 'complaints:detail_item_list' %}" class="btn btn-primary">Buka Daftar Rincian Komplain</a>
     </div>
     <div class="card">
         <h2 style="margin-top:0;">🏢 Identitas Perusahaan</h2>

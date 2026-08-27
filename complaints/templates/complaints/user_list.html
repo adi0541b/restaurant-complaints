@@ -20,11 +20,11 @@
                 <td>{% if u.staff_profile %}{{ u.staff_profile.get_role_display }}{% else %}<span style="color:var(--text-muted);">Belum diatur</span>{% endif %}</td>
                 <td>
                     {% if u.staff_profile.branch %}
-                        Cabang: {{ u.staff_profile.branch.name }}
+                        Outlet: {{ u.staff_profile.branch.name }}
                     {% elif u.staff_profile.city %}
                         Kota: {{ u.staff_profile.city.name }}
                     {% else %}
-                        Semua Cabang
+                        Semua Outlet
                     {% endif %}
                 </td>
                 <td>{% if u.is_active %}✅{% else %}❌{% endif %}</td>

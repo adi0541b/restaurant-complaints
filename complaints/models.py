@@ -10,7 +10,7 @@ from django.utils import timezone
 # KOTA
 # =============================================================================
 class City(models.Model):
-    """Kota tempat cabang-cabang berada. Hanya Admin Pusat yang bisa menambah/mengubah."""
+    """Kota tempat outlet-outlet berada. Hanya Admin Pusat yang bisa menambah/mengubah."""
     name = models.CharField('Nama Kota', max_length=100, unique=True)
     is_active = models.BooleanField('Aktif', default=True)
     created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
@@ -28,9 +28,9 @@ class City(models.Model):
 # CABANG (BRANCH)
 # =============================================================================
 class Branch(models.Model):
-    """Cabang restoran. Setiap cabang berada di satu kota."""
-    name = models.CharField('Nama Cabang', max_length=150)
-    code = models.CharField('Kode Cabang', max_length=20, unique=True,
+    """Outlet restoran. Setiap outlet berada di satu kota."""
+    name = models.CharField('Nama Outlet', max_length=150)
+    code = models.CharField('Kode Outlet', max_length=20, unique=True,
                              help_text='Contoh: JKT-01, BDG-02')
     address = models.TextField('Alamat', blank=True)
     city = models.ForeignKey(
@@ -39,7 +39,7 @@ class Branch(models.Model):
     )
     phone = models.CharField('Telepon', max_length=30, blank=True)
     manager = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name='Manager Cabang',
+        settings.AUTH_USER_MODEL, verbose_name='Manager Outlet',
         related_name='branches_managed', null=True, blank=True,
         on_delete=models.SET_NULL,
     )
@@ -47,8 +47,8 @@ class Branch(models.Model):
     created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Cabang'
-        verbose_name_plural = 'Cabang'
+        verbose_name = 'Outlet'
+        verbose_name_plural = 'Outlet'
         ordering = ['name']
 
     def __str__(self):
@@ -62,7 +62,8 @@ class StaffProfile(models.Model):
     """Profil tambahan untuk user dengan berbagai peran & cakupan akses."""
 
     class Role(models.TextChoices):
-        STAFF = 'staff', 'Staff / PIC Cabang'
+        STAFF = 'staff', 'Staff / PIC Outlet'
+        QC_TRAINER = 'qc_trainer', 'QC/Trainer'
         INPUT_STAFF = 'input_staff', 'Staff Input Komplain'
         VALIDATOR = 'validator', 'Validator'
         MANAGER = 'manager', 'Manager Kota'
@@ -75,14 +76,14 @@ class StaffProfile(models.Model):
     )
     role = models.CharField('Peran', max_length=20, choices=Role.choices, default=Role.STAFF)
     branch = models.ForeignKey(
-        Branch, verbose_name='Cabang', related_name='staff_members',
+        Branch, verbose_name='Outlet', related_name='staff_members',
         null=True, blank=True, on_delete=models.SET_NULL,
-        help_text='Isi untuk peran Staff/PIC Cabang (akses 1 cabang spesifik).',
+        help_text='Isi untuk peran Staff/PIC Outlet (akses 1 outlet spesifik).',
     )
     city = models.ForeignKey(
         City, verbose_name='Kota', related_name='managers',
         null=True, blank=True, on_delete=models.SET_NULL,
-        help_text='Isi untuk peran Manager Kota (akses semua cabang di kota tsb).',
+        help_text='Isi untuk peran Manager Kota (akses semua outlet di kota tsb).',
     )
     phone = models.CharField('No. WhatsApp', max_length=30, blank=True)
     photo = models.ImageField('Foto Profil', upload_to='staff_photos/', blank=True, null=True)
@@ -99,7 +100,7 @@ class StaffProfile(models.Model):
         elif self.city:
             scope_label = f'Kota {self.city.name}'
         else:
-            scope_label = 'Semua Cabang'
+            scope_label = 'Semua Outlet'
         return f'{self.user.get_full_name() or self.user.username} - {self.get_role_display()} ({scope_label})'
 
     @property
@@ -119,6 +120,16 @@ class StaffProfile(models.Model):
         return self.role == self.Role.STAFF
 
     @property
+    def is_qc_trainer(self):
+        return self.role == self.Role.QC_TRAINER
+
+    @property
+    def can_handle_case(self):
+        """Role yang bisa mengisi Akar Masalah, Solusi, dan Validasi (teks):
+        Staff/PIC Outlet (akses 1 outlet) dan QC/Trainer (akses 1 kota)."""
+        return self.role in (self.Role.STAFF, self.Role.QC_TRAINER)
+
+    @property
     def is_input_staff(self):
         return self.role == self.Role.INPUT_STAFF
 
@@ -128,8 +139,50 @@ class StaffProfile(models.Model):
 
     @property
     def has_full_visibility(self):
-        """Role dengan akses melihat semua cabang di semua kota."""
+        """Role dengan akses melihat semua outlet di semua kota."""
         return self.role in (self.Role.ADMIN, self.Role.AREA_MANAGER, self.Role.INPUT_STAFF, self.Role.VALIDATOR)
+
+
+# =============================================================================
+# SUMBER KOMPLAIN (bisa dikelola Admin Pusat)
+# =============================================================================
+class ComplaintSource(models.Model):
+    """Sumber/kanal masuknya komplain, mis. WhatsApp, Instagram, GMaps, dsb."""
+    name = models.CharField('Sumber Komplain', max_length=100, unique=True)
+    is_active = models.BooleanField('Aktif', default=True)
+    created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Sumber Komplain'
+        verbose_name_plural = 'Sumber Komplain'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# =============================================================================
+# RINCIAN KOMPLAIN (bisa dikelola Admin Pusat), dikelompokkan per Jenis Komplain
+# =============================================================================
+class ComplaintDetailItem(models.Model):
+    """Rincian komplain di bawah Jenis Komplain (Produk/Servis)."""
+
+    class MainType(models.TextChoices):
+        PRODUK = 'produk', 'Komplain Produk'
+        SERVIS = 'servis', 'Komplain Servis'
+
+    main_type = models.CharField('Jenis Komplain', max_length=10, choices=MainType.choices)
+    name = models.CharField('Rincian Komplain', max_length=150)
+    is_active = models.BooleanField('Aktif', default=True)
+    created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Rincian Komplain'
+        verbose_name_plural = 'Rincian Komplain'
+        ordering = ['main_type', 'name']
+
+    def __str__(self):
+        return f'{self.get_main_type_display()} - {self.name}'
 
 
 # =============================================================================
@@ -145,13 +198,8 @@ class Complaint(models.Model):
         RENDAH = 'rendah', 'Rendah'
 
     class Category(models.TextChoices):
-        MAKANAN = 'makanan', 'Kualitas Makanan'
-        PELAYANAN = 'pelayanan', 'Pelayanan Staff'
-        KEBERSIHAN = 'kebersihan', 'Kebersihan'
-        KECEPATAN = 'kecepatan', 'Kecepatan Penyajian'
-        FASILITAS = 'fasilitas', 'Fasilitas / Kenyamanan'
-        PEMBAYARAN = 'pembayaran', 'Pembayaran / Struk'
-        LAINNYA = 'lainnya', 'Lainnya'
+        PRODUK = 'produk', 'Komplain Produk'
+        SERVIS = 'servis', 'Komplain Servis'
 
     class Status(models.TextChoices):
         BARU = 'baru', 'Baru'
@@ -170,14 +218,32 @@ class Complaint(models.Model):
     customer_email = models.EmailField('Email', blank=True)
 
     # --- Konteks kejadian (mendukung prefill lewat QR code / URL) -------------
-    branch = models.ForeignKey(Branch, verbose_name='Cabang', related_name='complaints',
+    branch = models.ForeignKey(Branch, verbose_name='Outlet', related_name='complaints',
                                 on_delete=models.PROTECT)
     table_number = models.CharField('Nomor Meja', max_length=20, blank=True)
     visit_date = models.DateField('Tanggal Kunjungan', null=True, blank=True)
     order_number = models.CharField('Nomor Pesanan/Struk', max_length=50, blank=True)
 
+    # --- Waktu & sumber komplain -----------------------------------------------
+    customer_complaint_time = models.DateTimeField(
+        'Jam Komplain Masuk', null=True, blank=True,
+        help_text='Jam saat pelanggan menyampaikan komplain (mis. lewat telepon/WA).',
+    )
+    cs_handled_time = models.DateTimeField(
+        'Jam Komplain Ditangani CS', null=True, blank=True,
+        help_text='Jam saat Staff Input Komplain menginput data komplain ini ke sistem.',
+    )
+    source = models.ForeignKey(
+        ComplaintSource, verbose_name='Sumber Komplain', related_name='complaints',
+        null=True, blank=True, on_delete=models.SET_NULL,
+    )
+
     # --- Isi komplain -----------------------------------------------------------
-    category = models.CharField('Kategori', max_length=20, choices=Category.choices)
+    category = models.CharField('Jenis Komplain', max_length=20, choices=Category.choices)
+    detail_item = models.ForeignKey(
+        ComplaintDetailItem, verbose_name='Rincian Komplain', related_name='complaints',
+        null=True, blank=True, on_delete=models.SET_NULL,
+    )
     severity = models.CharField('Tingkat Keparahan', max_length=10, choices=Severity.choices,
                                  default=Severity.SEDANG)
     description = models.TextField('Deskripsi Komplain')
@@ -205,7 +271,7 @@ class Complaint(models.Model):
 
     validation_notes = models.TextField(
         'Validasi', blank=True,
-        help_text='Diisi Staff/PIC Cabang setelah Solusi dikonfirmasi Validator.',
+        help_text='Diisi Staff/PIC Outlet setelah Solusi dikonfirmasi Validator.',
     )
 
     # --- Gerbang 2: Konfirmasi akhir (oleh Validator) -> status Selesai ------
@@ -220,6 +286,10 @@ class Complaint(models.Model):
     # --- SLA ------------------------------------------------------------------
     sla_deadline = models.DateTimeField('Batas Waktu SLA', null=True, blank=True, editable=False)
     resolved_at = models.DateTimeField('Selesai pada', null=True, blank=True)
+    sla_reminder_sent = models.BooleanField(
+        'Reminder SLA Terkirim', default=False, editable=False,
+        help_text='Penanda internal supaya reminder WhatsApp 3 jam sebelum SLA tidak terkirim berulang.',
+    )
 
     # --- Kepuasan pelanggan ------------------------------------------------
     satisfaction_rating = models.PositiveSmallIntegerField(

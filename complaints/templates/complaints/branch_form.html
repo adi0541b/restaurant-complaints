@@ -1,8 +1,8 @@
 {% extends "complaints/base.html" %}
-{% block title %}{% if is_create %}Tambah Cabang{% else %}Edit Cabang{% endif %} - {{ BRAND_NAME }}{% endblock %}
+{% block title %}{% if is_create %}Tambah Outlet{% else %}Edit Outlet{% endif %} - {{ BRAND_NAME }}{% endblock %}
 {% block content %}
-<h1>{% if is_create %}Tambah Cabang Baru{% else %}Edit Cabang: {{ branch.name }}{% endif %}</h1>
-<p class="subtitle"><a href="{% url 'complaints:branch_list' %}">&larr; Kembali ke Daftar Cabang</a></p>
+<h1>{% if is_create %}Tambah Outlet Baru{% else %}Edit Outlet: {{ branch.name }}{% endif %}</h1>
+<p class="subtitle"><a href="{% url 'complaints:branch_list' %}">&larr; Kembali ke Daftar Outlet</a></p>
 
 <div class="card">
     <form method="post">
@@ -14,11 +14,11 @@
         {{ form.phone.label_tag }}{{ form.phone }}
         {{ form.manager.label_tag }}{{ form.manager }}
         <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
-            {{ form.is_active }} <span style="font-weight:normal;">Cabang Aktif</span>
+            {{ form.is_active }} <span style="font-weight:normal;">Outlet Aktif</span>
         </label>
 
         <div style="margin-top:24px;">
-            <button type="submit" class="btn btn-primary">{% if is_create %}Tambah Cabang{% else %}Simpan Perubahan{% endif %}</button>
+            <button type="submit" class="btn btn-primary">{% if is_create %}Tambah Outlet{% else %}Simpan Perubahan{% endif %}</button>
         </div>
     </form>
 </div>

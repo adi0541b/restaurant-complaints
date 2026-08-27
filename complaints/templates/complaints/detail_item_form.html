@@ -1,0 +1,21 @@
+{% extends "complaints/base.html" %}
+{% block title %}{% if is_create %}Tambah Rincian Komplain{% else %}Edit Rincian Komplain{% endif %} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>{% if is_create %}Tambah Rincian Komplain Baru{% else %}Edit Rincian Komplain: {{ item.name }}{% endif %}</h1>
+<p class="subtitle"><a href="{% url 'complaints:detail_item_list' %}">&larr; Kembali ke Daftar Rincian Komplain</a></p>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.main_type.label_tag }}{{ form.main_type }}
+        {{ form.name.label_tag }}{{ form.name }}
+        <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
+            {{ form.is_active }} <span style="font-weight:normal;">Aktif</span>
+        </label>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">{% if is_create %}Tambah{% else %}Simpan Perubahan{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

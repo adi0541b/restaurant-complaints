@@ -11,7 +11,7 @@
 {% elif request.user.staff_profile.city %}
     Kota {{ request.user.staff_profile.city.name }}
 {% else %}
-    Semua Cabang
+    Semua Outlet
 {% endif %}
 </p>
 
@@ -51,7 +51,7 @@
     <h2>Komplain Terbaru</h2>
     <table>
         <thead>
-            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Cabang</th><th>Kategori</th><th>Status</th><th>SLA</th></tr>
+            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Outlet</th><th>Kategori</th><th>Status</th><th>SLA</th></tr>
         </thead>
         <tbody>
         {% for c in recent_complaints %}
@@ -74,9 +74,9 @@
 
 {% if by_branch|length > 1 %}
 <div class="card">
-    <h2>Komplain per Cabang</h2>
+    <h2>Komplain per Outlet</h2>
     <table>
-        <thead><tr><th>Cabang</th><th>Jumlah</th></tr></thead>
+        <thead><tr><th>Outlet</th><th>Jumlah</th></tr></thead>
         <tbody>
         {% for row in by_branch %}
             <tr><td>{{ row.branch__name }}</td><td>{{ row.total }}</td></tr>

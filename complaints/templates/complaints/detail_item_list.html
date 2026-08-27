@@ -1,0 +1,29 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kelola Rincian Komplain - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h1 style="margin:0;">Kelola Rincian Komplain</h1>
+    <a href="{% url 'complaints:detail_item_create' %}" class="btn btn-primary">+ Tambah Rincian Baru</a>
+</div>
+<p class="subtitle"><a href="{% url 'complaints:admin_panel' %}">&larr; Kembali ke Panel Admin</a></p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Jenis Komplain</th><th>Rincian</th><th>Aktif</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+            <tr>
+                <td>{{ item.get_main_type_display }}</td>
+                <td>{{ item.name }}</td>
+                <td>{% if item.is_active %}✅{% else %}❌{% endif %}</td>
+                <td><a href="{% url 'complaints:detail_item_edit' item.pk %}" class="btn btn-outline">Edit</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4">Belum ada rincian komplain.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

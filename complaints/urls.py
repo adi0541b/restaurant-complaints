@@ -33,5 +33,11 @@ urlpatterns = [
     path('admin-panel/kota/', views.city_list, name='city_list'),
     path('admin-panel/kota/baru/', views.city_create, name='city_create'),
     path('admin-panel/kota/<int:pk>/edit/', views.city_edit, name='city_edit'),
+    path('admin-panel/sumber-komplain/', views.source_list, name='source_list'),
+    path('admin-panel/sumber-komplain/baru/', views.source_create, name='source_create'),
+    path('admin-panel/sumber-komplain/<int:pk>/edit/', views.source_edit, name='source_edit'),
+    path('admin-panel/rincian-komplain/', views.detail_item_list, name='detail_item_list'),
+    path('admin-panel/rincian-komplain/baru/', views.detail_item_create, name='detail_item_create'),
+    path('admin-panel/rincian-komplain/<int:pk>/edit/', views.detail_item_edit, name='detail_item_edit'),
     path('admin-panel/pengaturan/', views.site_settings_edit, name='site_settings_edit'),
 ]

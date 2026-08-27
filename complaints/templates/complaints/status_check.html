@@ -23,7 +23,7 @@
         {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat SLA</span>{% endif %}
     </p>
     <table>
-        <tr><th>Cabang</th><td>{{ complaint.branch.name }}</td></tr>
+        <tr><th>Outlet</th><td>{{ complaint.branch.name }}</td></tr>
         <tr><th>Kategori</th><td>{{ complaint.get_category_display }}</td></tr>
         <tr><th>Deskripsi</th><td>{{ complaint.description }}</td></tr>
         <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
