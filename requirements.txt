@@ -2,6 +2,7 @@ Django>=5.0,<5.3
 Pillow>=10.0
 python-dotenv>=1.0
 openpyxl>=3.1
+requests>=2.31
 
 # --- Untuk deployment produksi (Render, dsb.) ---
 gunicorn>=22.0

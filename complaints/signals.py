@@ -1,4 +1,5 @@
 import logging
+import time
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -102,10 +103,14 @@ def send_new_complaint_notifications(complaint):
         to_staff=True,
     )
 
+    # Jeda supaya tidak kena rate limit provider WhatsApp (mis. TextMeBot
+    # membatasi 1 pesan/5 detik untuk SELURUH akun, bukan hanya per fungsi).
+    time.sleep(6)
+
     # 3) Notifikasi ke WhatsApp QC/Trainer di kota outlet terkait
     notify_qc_trainers(
         complaint,
-        f'📥 Komplain baru {complaint.code} masuk di {complaint.branch.name} '
+        f'[BARU] Komplain baru {complaint.code} masuk di {complaint.branch.name} '
         f'(Kota {complaint.branch.city.name if complaint.branch.city else "-"}).\n'
         f'Jenis: {complaint.get_category_display()}'
         f'{" - " + complaint.detail_item.name if complaint.detail_item else ""}\n'
@@ -149,11 +154,14 @@ def send_status_update_notification(complaint, old_status):
 # =============================================================================
 def send_whatsapp_message(phone_number, message, log_ref=''):
     """Fungsi generik: kirim satu pesan WhatsApp ke satu nomor tertentu."""
+    print(f'[DEBUG WA] send_whatsapp_message dipanggil untuk {log_ref} ke {phone_number}', flush=True)
     if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
         logger.info('[WhatsApp stub] (nonaktif) Pesan %s untuk %s: %s', log_ref, phone_number, message)
+        print(f'[DEBUG WA] NOTIFIKASI NONAKTIF (WHATSAPP_NOTIFICATIONS_ENABLED=False) untuk {log_ref}', flush=True)
         return
 
     if not phone_number:
+        print(f'[DEBUG WA] Nomor HP kosong untuk {log_ref}, dilewati.', flush=True)
         return
 
     # TextMeBot butuh format nomor internasional DENGAN tanda "+" (mis. +628123456789).
@@ -168,6 +176,7 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
 
     try:
         import requests  # import lokal agar tidak wajib terpasang jika fitur nonaktif
+        print(f'[DEBUG WA] Mengirim request ke {settings.WHATSAPP_API_URL} untuk {log_ref}...', flush=True)
         response = requests.get(
             settings.WHATSAPP_API_URL,
             params={
@@ -177,8 +186,10 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
             },
             timeout=10,
         )
+        print(f'[DEBUG WA] Respons diterima untuk {log_ref}: {response.text[:200]}', flush=True)
         logger.info('[WhatsApp] Respons TextMeBot %s: %s', log_ref, response.text[:300])
-    except Exception:
+    except Exception as e:
+        print(f'[DEBUG WA] EXCEPTION saat kirim untuk {log_ref}: {e!r}', flush=True)
         logger.exception('Gagal mengirim notifikasi WhatsApp %s', log_ref)
 
 
@@ -198,17 +209,28 @@ def send_whatsapp_notification(complaint, message, to_staff=False):
 def notify_qc_trainers(complaint, message):
     """Kirim WhatsApp ke SEMUA QC/Trainer yang cakupan kotanya sama dengan
     kota outlet komplain ini."""
+    print(f'[DEBUG WA] notify_qc_trainers dipanggil untuk {complaint.code}', flush=True)
     city = complaint.branch.city if complaint.branch else None
     if not city:
+        print(f'[DEBUG WA] Outlet {complaint.branch} tidak punya kota, dilewati.', flush=True)
         logger.info(
             '[WhatsApp] Outlet %s belum diset kotanya, notifikasi QC/Trainer untuk %s dilewati.',
             complaint.branch, complaint.code,
         )
         return
 
-    qc_trainers = StaffProfile.objects.filter(
+    qc_trainers = list(StaffProfile.objects.filter(
         role=StaffProfile.Role.QC_TRAINER, city=city,
-    ).exclude(phone='')
+    ).exclude(phone=''))
+    print(f'[DEBUG WA] Ditemukan {len(qc_trainers)} QC/Trainer untuk kota {city.name}: {[p.user.username for p in qc_trainers]}', flush=True)
 
-    for profile in qc_trainers:
+    for index, profile in enumerate(qc_trainers):
+        if index > 0:
+            # TextMeBot (dan kebanyakan provider WhatsApp API sejenis) membatasi
+            # kecepatan pengiriman (mis. 1 pesan / 5 detik) untuk mencegah nomor
+            # diblokir WhatsApp. Beri jeda supaya pesan ke penerima berikutnya
+            # tidak ditolak karena terlalu cepat.
+            print(f'[DEBUG WA] Menunggu 6 detik sebelum kirim ke penerima berikutnya...', flush=True)
+            time.sleep(6)
         send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> QC/Trainer {profile.user}')
+    print(f'[DEBUG WA] notify_qc_trainers SELESAI untuk {complaint.code}', flush=True)

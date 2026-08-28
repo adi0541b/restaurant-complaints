@@ -195,3 +195,22 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ---------------------------------------------------------------------------
+# Logging: pastikan pesan logger.info/logger.exception (mis. dari signals.py
+# untuk notifikasi WhatsApp) benar-benar tercatat ke stderr/gunicorn-error.log.
+# Tanpa ini, Python secara default hanya mencatat level WARNING ke atas.
+# ---------------------------------------------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
