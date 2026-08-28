@@ -143,11 +143,9 @@ def send_status_update_notification(complaint, old_status):
 
 
 # =============================================================================
-# Notifikasi WHATSAPP via Fonnte (https://fonnte.com)
-# Fonnte dipilih karena mudah dipakai untuk UMKM Indonesia: tidak perlu approval
-# WhatsApp Business API resmi, cukup scan QR code dengan nomor WhatsApp biasa.
-# Kalau ingin pakai provider lain (Twilio, WA Cloud API resmi, dll), sesuaikan
-# format request di bawah ini dengan dokumentasi provider tersebut.
+# Notifikasi WHATSAPP via TextMeBot (https://textmebot.com)
+# Kalau ingin pindah ke provider lain (Fonnte, Twilio, WA Cloud API resmi, dll),
+# sesuaikan format request di bawah ini dengan dokumentasi provider tersebut.
 # =============================================================================
 def send_whatsapp_message(phone_number, message, log_ref=''):
     """Fungsi generik: kirim satu pesan WhatsApp ke satu nomor tertentu."""
@@ -158,23 +156,28 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
     if not phone_number:
         return
 
-    # Fonnte butuh format nomor internasional tanpa tanda "+" (mis. 628123456789).
+    # TextMeBot butuh format nomor internasional DENGAN tanda "+" (mis. +628123456789).
     # Ubah otomatis dari format lokal "08..." kalau perlu.
     normalized_phone = phone_number.strip().replace(' ', '').replace('-', '')
     if normalized_phone.startswith('0'):
-        normalized_phone = '62' + normalized_phone[1:]
-    elif normalized_phone.startswith('+'):
-        normalized_phone = normalized_phone[1:]
+        normalized_phone = '+62' + normalized_phone[1:]
+    elif normalized_phone.startswith('62'):
+        normalized_phone = '+' + normalized_phone
+    elif not normalized_phone.startswith('+'):
+        normalized_phone = '+' + normalized_phone
 
     try:
         import requests  # import lokal agar tidak wajib terpasang jika fitur nonaktif
-        response = requests.post(
+        response = requests.get(
             settings.WHATSAPP_API_URL,
-            headers={'Authorization': settings.WHATSAPP_API_TOKEN},
-            data={'target': normalized_phone, 'message': message},
+            params={
+                'recipient': normalized_phone,
+                'apikey': settings.WHATSAPP_API_TOKEN,
+                'text': message,
+            },
             timeout=10,
         )
-        logger.info('[WhatsApp] Respons Fonnte %s: %s', log_ref, response.text[:300])
+        logger.info('[WhatsApp] Respons TextMeBot %s: %s', log_ref, response.text[:300])
     except Exception:
         logger.exception('Gagal mengirim notifikasi WhatsApp %s', log_ref)
 
