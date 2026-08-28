@@ -62,13 +62,13 @@ class StaffProfile(models.Model):
     """Profil tambahan untuk user dengan berbagai peran & cakupan akses."""
 
     class Role(models.TextChoices):
-        STAFF = 'staff', 'Staff / PIC Outlet'
+        STAFF = 'staff', 'Leader Outlet'
         QC_TRAINER = 'qc_trainer', 'QC/Trainer'
-        INPUT_STAFF = 'input_staff', 'Staff Input Komplain'
+        INPUT_STAFF = 'input_staff', 'CS'
         VALIDATOR = 'validator', 'Validator'
-        MANAGER = 'manager', 'Manager Kota'
-        AREA_MANAGER = 'area_manager', 'Manager Wilayah'
-        ADMIN = 'admin', 'Admin Pusat'
+        MANAGER = 'manager', 'Manager Area'
+        AREA_MANAGER = 'area_manager', 'Pusat'
+        ADMIN = 'admin', 'Admin'
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, verbose_name='Akun Pengguna',
