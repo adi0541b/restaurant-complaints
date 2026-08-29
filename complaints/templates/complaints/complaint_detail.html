@@ -80,6 +80,14 @@
             </div>
         </td></tr>
         {% endif %}
+        {% if complaint.lo_followup %}
+        <tr><th>Tindak Lanjut LO</th><td>
+            {{ complaint.lo_followup }}
+            <div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">
+                — {% if complaint.lo_followup_by %}{{ complaint.lo_followup_by.get_full_name|default:complaint.lo_followup_by.username }}{% else %}-{% endif %}{% if complaint.lo_followup_at %}, {{ complaint.lo_followup_at|date:"d M Y, H:i" }}{% endif %}
+            </div>
+        </td></tr>
+        {% endif %}
         {% if complaint.satisfaction_rating %}
         <tr><th>Rating Pelanggan</th><td>{{ complaint.satisfaction_rating }} / 5 &middot; {{ complaint.satisfaction_feedback|default:"-" }}</td></tr>
         {% endif %}

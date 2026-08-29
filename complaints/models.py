@@ -126,8 +126,8 @@ class StaffProfile(models.Model):
     @property
     def can_handle_case(self):
         """Role yang bisa mengisi Akar Masalah, Solusi, dan Validasi (teks):
-        Staff/PIC Outlet (akses 1 outlet) dan QC/Trainer (akses 1 kota)."""
-        return self.role in (self.Role.STAFF, self.Role.QC_TRAINER)
+        HANYA QC/Trainer (akses 1 kota)."""
+        return self.role == self.Role.QC_TRAINER
 
     @property
     def is_input_staff(self):
@@ -291,6 +291,15 @@ class Complaint(models.Model):
         on_delete=models.SET_NULL,
     )
     manager_response_at = models.DateTimeField('Tanggapan diisi pada', null=True, blank=True)
+
+    # --- Tindak Lanjut Leader Outlet (bisa diisi kapan saja) ------------------
+    lo_followup = models.TextField('Tindak Lanjut LO', blank=True)
+    lo_followup_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='Tindak lanjut diisi oleh',
+        related_name='complaints_lo_followup', null=True, blank=True,
+        on_delete=models.SET_NULL,
+    )
+    lo_followup_at = models.DateTimeField('Tindak lanjut diisi pada', null=True, blank=True)
 
     # --- SLA ------------------------------------------------------------------
     sla_deadline = models.DateTimeField('Batas Waktu SLA', null=True, blank=True, editable=False)

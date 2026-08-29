@@ -90,6 +90,9 @@ class ComplaintAdmin(admin.ModelAdmin):
         ('Tanggapan MA', {
             'fields': ('manager_response', 'manager_response_by', 'manager_response_at'),
         }),
+        ('Tindak Lanjut LO', {
+            'fields': ('lo_followup', 'lo_followup_by', 'lo_followup_at'),
+        }),
         ('Kepuasan Pelanggan', {
             'fields': ('satisfaction_rating', 'satisfaction_feedback', 'rated_at'),
         }),

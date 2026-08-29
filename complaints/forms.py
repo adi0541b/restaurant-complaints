@@ -96,16 +96,18 @@ class ComplaintUpdateForm(forms.ModelForm):
     tergantung PERAN user (profile) dan SEJAUH MANA data sudah terisi
     (visibilitas bertahap, 2 gerbang konfirmasi Validator):
 
-    - Status & Tingkat Keparahan : hanya Staff Input Komplain
-    - Akar Masalah               : hanya Staff/PIC Outlet
-    - Solusi                     : hanya Staff/PIC Outlet, MUNCUL setelah
+    - Status & Tingkat Keparahan : hanya CS (Staff Input Komplain)
+    - Akar Masalah               : hanya QC/Trainer
+    - Solusi                     : hanya QC/Trainer, MUNCUL setelah
                                     Akar Masalah terisi
     - [Gerbang 1] Solusi Dikonfirmasi Validator : hanya Validator, MUNCUL
                                     setelah Solusi terisi
-    - Validasi (teks)            : hanya Staff/PIC Outlet, MUNCUL setelah
+    - Validasi (teks)            : hanya QC/Trainer, MUNCUL setelah
                                     Gerbang 1 dicentang Validator
     - [Gerbang 2] Dikonfirmasi Validator : hanya Validator, MUNCUL setelah
                                     Validasi (teks) terisi -> status Selesai
+    - Tanggapan MA                : hanya Manager Area, kapan saja
+    - Tindak Lanjut LO            : hanya Leader Outlet, kapan saja
     """
 
     class Meta:
@@ -113,7 +115,7 @@ class ComplaintUpdateForm(forms.ModelForm):
         fields = [
             'status', 'severity', 'resolution_notes', 'internal_notes',
             'solution_confirmed', 'validation_notes', 'validated',
-            'manager_response',
+            'manager_response', 'lo_followup',
         ]
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
@@ -132,6 +134,9 @@ class ComplaintUpdateForm(forms.ModelForm):
             'manager_response': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Masukan/tanggapan Anda terkait komplain ini'}),
+            'lo_followup': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Jelaskan tindak lanjut penanganan komplain ini'}),
         }
         labels = {
             'resolution_notes': 'Akar Masalah',
@@ -140,6 +145,7 @@ class ComplaintUpdateForm(forms.ModelForm):
             'validation_notes': 'Validasi',
             'validated': 'Centang: Validasi sudah benar (menyelesaikan komplain)',
             'manager_response': 'Tanggapan MA',
+            'lo_followup': 'Tindak Lanjut LO',
         }
 
     def __init__(self, *args, **kwargs):
@@ -198,6 +204,12 @@ class ComplaintUpdateForm(forms.ModelForm):
         if 'manager_response' in self.fields:
             if not (profile and profile.is_manager):
                 del self.fields['manager_response']
+
+        # Tindak Lanjut LO: hanya Leader Outlet (Staff/PIC Outlet), bisa diisi/
+        # diubah KAPAN SAJA (tidak terikat tahapan alur lainnya).
+        if 'lo_followup' in self.fields:
+            if not (profile and profile.is_staff_pic):
+                del self.fields['lo_followup']
 
 
 # =============================================================================

@@ -361,6 +361,11 @@ def complaint_detail(request, pk):
                 updated.manager_response_by = request.user
                 updated.manager_response_at = timezone.now()
 
+            # Tindak Lanjut LO: catat siapa & kapan terakhir mengisi/mengubahnya.
+            if profile and profile.is_staff_pic and updated.lo_followup:
+                updated.lo_followup_by = request.user
+                updated.lo_followup_at = timezone.now()
+
             updated.save()
             messages.success(request, f'Komplain {complaint.code} berhasil diperbarui.')
             return redirect('complaints:complaint_detail', pk=pk)
