@@ -11,6 +11,6 @@ dj-database-url>=2.2
 psycopg2-binary>=2.9
 
 # --- Opsional: aktifkan baris di bawah jika hosting Anda memakai MySQL/MariaDB
-# (mis. Webuzo, cPanel). Butuh paket sistem libmysqlclient-dev / default-libmysqlclient-dev
-# terpasang di server sebelum "pip install".
-# mysqlclient>=2.2
+# (mis. Webuzo, cPanel). PyMySQL dipilih (bukan mysqlclient) karena murni Python,
+# tidak perlu kompilasi/library sistem tambahan -- aman diinstall tanpa akses root.
+pymysql>=1.1
