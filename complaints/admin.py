@@ -87,6 +87,9 @@ class ComplaintAdmin(admin.ModelAdmin):
         ('Validasi', {
             'fields': ('validated', 'validated_by', 'validated_at'),
         }),
+        ('Tanggapan MA', {
+            'fields': ('manager_response', 'manager_response_by', 'manager_response_at'),
+        }),
         ('Kepuasan Pelanggan', {
             'fields': ('satisfaction_rating', 'satisfaction_feedback', 'rated_at'),
         }),

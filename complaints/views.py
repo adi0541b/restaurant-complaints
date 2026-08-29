@@ -356,6 +356,11 @@ def complaint_detail(request, pk):
                 if not updated.resolved_at:
                     updated.resolved_at = timezone.now()
 
+            # Tanggapan MA: catat siapa & kapan terakhir mengisi/mengubahnya.
+            if profile and profile.is_manager and updated.manager_response:
+                updated.manager_response_by = request.user
+                updated.manager_response_at = timezone.now()
+
             updated.save()
             messages.success(request, f'Komplain {complaint.code} berhasil diperbarui.')
             return redirect('complaints:complaint_detail', pk=pk)

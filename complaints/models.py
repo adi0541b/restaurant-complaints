@@ -283,6 +283,15 @@ class Complaint(models.Model):
     )
     validated_at = models.DateTimeField('Divalidasi pada', null=True, blank=True)
 
+    # --- Tanggapan Manager Area (bisa diisi kapan saja, tidak terikat alur) ---
+    manager_response = models.TextField('Tanggapan MA', blank=True)
+    manager_response_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='Tanggapan diisi oleh',
+        related_name='complaints_manager_response', null=True, blank=True,
+        on_delete=models.SET_NULL,
+    )
+    manager_response_at = models.DateTimeField('Tanggapan diisi pada', null=True, blank=True)
+
     # --- SLA ------------------------------------------------------------------
     sla_deadline = models.DateTimeField('Batas Waktu SLA', null=True, blank=True, editable=False)
     resolved_at = models.DateTimeField('Selesai pada', null=True, blank=True)

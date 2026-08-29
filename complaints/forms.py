@@ -113,6 +113,7 @@ class ComplaintUpdateForm(forms.ModelForm):
         fields = [
             'status', 'severity', 'resolution_notes', 'internal_notes',
             'solution_confirmed', 'validation_notes', 'validated',
+            'manager_response',
         ]
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
@@ -128,6 +129,9 @@ class ComplaintUpdateForm(forms.ModelForm):
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Catatan validasi (bukti/verifikasi bahwa solusi sudah diterapkan)'}),
             'validated': forms.CheckboxInput(),
+            'manager_response': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Masukan/tanggapan Anda terkait komplain ini'}),
         }
         labels = {
             'resolution_notes': 'Akar Masalah',
@@ -135,6 +139,7 @@ class ComplaintUpdateForm(forms.ModelForm):
             'solution_confirmed': 'Centang: Solusi sudah benar (mengizinkan Staff mengisi Validasi)',
             'validation_notes': 'Validasi',
             'validated': 'Centang: Validasi sudah benar (menyelesaikan komplain)',
+            'manager_response': 'Tanggapan MA',
         }
 
     def __init__(self, *args, **kwargs):
@@ -187,6 +192,12 @@ class ComplaintUpdateForm(forms.ModelForm):
             elif self.instance.validated:
                 # Sudah pernah divalidasi -> kunci checkbox (tidak bisa dibatalkan lewat form)
                 self.fields['validated'].disabled = True
+
+        # Tanggapan MA: hanya Manager Area, bisa diisi/diubah KAPAN SAJA
+        # (tidak terikat tahapan alur Akar Masalah/Solusi/Validasi).
+        if 'manager_response' in self.fields:
+            if not (profile and profile.is_manager):
+                del self.fields['manager_response']
 
 
 # =============================================================================

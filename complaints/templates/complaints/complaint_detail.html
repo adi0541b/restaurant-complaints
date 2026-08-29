@@ -72,6 +72,14 @@
                 Belum dikonfirmasi
             {% endif %}
         </td></tr>
+        {% if complaint.manager_response %}
+        <tr><th>Tanggapan MA</th><td>
+            {{ complaint.manager_response }}
+            <div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">
+                — {% if complaint.manager_response_by %}{{ complaint.manager_response_by.get_full_name|default:complaint.manager_response_by.username }}{% else %}-{% endif %}{% if complaint.manager_response_at %}, {{ complaint.manager_response_at|date:"d M Y, H:i" }}{% endif %}
+            </div>
+        </td></tr>
+        {% endif %}
         {% if complaint.satisfaction_rating %}
         <tr><th>Rating Pelanggan</th><td>{{ complaint.satisfaction_rating }} / 5 &middot; {{ complaint.satisfaction_feedback|default:"-" }}</td></tr>
         {% endif %}
