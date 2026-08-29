@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Q
 from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 
 from .forms import (
@@ -24,6 +25,7 @@ from .forms import (
     StaffAccountCreateForm,
     StaffAccountEditForm,
     StatusCheckForm,
+    StyledPasswordChangeForm,
 )
 from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
@@ -158,6 +160,19 @@ class StaffLoginView(auth_views.LoginView):
 
 class StaffLogoutView(auth_views.LogoutView):
     pass
+
+
+# =============================================================================
+# GANTI PASSWORD - bisa dipakai SEMUA user yang sudah login (peran apa pun)
+# =============================================================================
+class StaffPasswordChangeView(auth_views.PasswordChangeView):
+    template_name = 'complaints/password_change_form.html'
+    form_class = StyledPasswordChangeForm
+    success_url = reverse_lazy('complaints:password_change_done')
+
+
+class StaffPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
+    template_name = 'complaints/password_change_done.html'
 
 
 # =============================================================================

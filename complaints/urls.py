@@ -14,6 +14,8 @@ urlpatterns = [
     # Auth
     path('login/', views.StaffLoginView.as_view(), name='login'),
     path('logout/', views.StaffLogoutView.as_view(), name='logout'),
+    path('ganti-password/', views.StaffPasswordChangeView.as_view(), name='password_change'),
+    path('ganti-password/selesai/', views.StaffPasswordChangeDoneView.as_view(), name='password_change_done'),
 
     # Internal - Staff / Manager / Admin Pusat
     path('dashboard/', views.dashboard, name='dashboard'),

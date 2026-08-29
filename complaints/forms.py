@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
 
 from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
@@ -402,3 +402,17 @@ class ComplaintDetailItemForm(forms.ModelForm):
             'name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: Kualitas Makanan'}),
         }
         labels = {'main_type': 'Jenis Komplain', 'is_active': 'Aktif'}
+
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    """Form ganti password, dipakai SEMUA user (bukan cuma Admin Pusat) untuk
+    mengganti password mereka sendiri, dengan tampilan konsisten aplikasi."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
+        self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})
+        self.fields['old_password'].label = 'Password Saat Ini'
+        self.fields['new_password1'].label = 'Password Baru'
+        self.fields['new_password2'].label = 'Ulangi Password Baru'
