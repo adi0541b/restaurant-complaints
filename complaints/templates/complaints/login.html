@@ -8,10 +8,33 @@
         <label for="id_username">Username</label>
         <input type="text" name="username" id="id_username" class="form-control" required>
         <label for="id_password">Password</label>
-        <input type="password" name="password" id="id_password" class="form-control" required>
+        <div style="position:relative;">
+            <input type="password" name="password" id="id_password" class="form-control" style="padding-right:44px;" required>
+            <button type="button" onclick="togglePwField('id_password')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--maroon);cursor:pointer;padding:4px;display:flex;align-items:center;">
+                <svg id="eye-open-id_password" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="eye-closed-id_password" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+        </div>
         <div style="margin-top:20px;">
             <button type="submit" class="btn btn-primary" style="width:100%;">Masuk</button>
         </div>
     </form>
 </div>
+
+<script>
+function togglePwField(inputId) {
+    var input = document.getElementById(inputId);
+    var openIcon = document.getElementById('eye-open-' + inputId);
+    var closedIcon = document.getElementById('eye-closed-' + inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (openIcon) openIcon.style.display = 'none';
+        if (closedIcon) closedIcon.style.display = '';
+    } else {
+        input.type = 'password';
+        if (openIcon) openIcon.style.display = '';
+        if (closedIcon) closedIcon.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

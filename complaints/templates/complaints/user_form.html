@@ -26,11 +26,32 @@
 
         {% if is_create %}
             <h3>Password</h3>
-            {{ form.password1.label_tag }}{{ form.password1 }}
-            {{ form.password2.label_tag }}{{ form.password2 }}
+            {{ form.password1.label_tag }}
+            <div style="position:relative;">
+                {{ form.password1 }}
+                <button type="button" onclick="togglePwField('id_password1')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--maroon);cursor:pointer;padding:4px;display:flex;align-items:center;">
+                    <svg id="eye-open-id_password1" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eye-closed-id_password1" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+            {{ form.password2.label_tag }}
+            <div style="position:relative;">
+                {{ form.password2 }}
+                <button type="button" onclick="togglePwField('id_password2')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--maroon);cursor:pointer;padding:4px;display:flex;align-items:center;">
+                    <svg id="eye-open-id_password2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eye-closed-id_password2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
         {% else %}
             <h3>Ubah Password (opsional)</h3>
-            {{ form.new_password.label_tag }}{{ form.new_password }}
+            {{ form.new_password.label_tag }}
+            <div style="position:relative;">
+                {{ form.new_password }}
+                <button type="button" onclick="togglePwField('id_new_password')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--maroon);cursor:pointer;padding:4px;display:flex;align-items:center;">
+                    <svg id="eye-open-id_new_password" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eye-closed-id_new_password" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
             {% if form.new_password.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.new_password.help_text }}</p>{% endif %}
             <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
                 {{ form.is_active }} <span style="font-weight:normal;">Akun Aktif</span>
@@ -60,5 +81,20 @@
         toggleFields();
     }
 })();
+
+function togglePwField(inputId) {
+    var input = document.getElementById(inputId);
+    var openIcon = document.getElementById('eye-open-' + inputId);
+    var closedIcon = document.getElementById('eye-closed-' + inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (openIcon) openIcon.style.display = 'none';
+        if (closedIcon) closedIcon.style.display = '';
+    } else {
+        input.type = 'password';
+        if (openIcon) openIcon.style.display = '';
+        if (closedIcon) closedIcon.style.display = 'none';
+    }
+}
 </script>
 {% endblock %}

@@ -246,8 +246,8 @@ class StaffAccountCreateForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['password1'].widget.attrs.update(ADMIN_TEXT_ATTRS)
-        self.fields['password2'].widget.attrs.update(ADMIN_TEXT_ATTRS)
+        self.fields['password1'].widget.attrs.update({**ADMIN_TEXT_ATTRS, 'style': 'padding-right:44px;'})
+        self.fields['password2'].widget.attrs.update({**ADMIN_TEXT_ATTRS, 'style': 'padding-right:44px;'})
 
     def save(self, commit=True):
         user = super().save(commit=commit)
@@ -282,7 +282,8 @@ class StaffAccountEditForm(forms.ModelForm):
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
     new_password = forms.CharField(
-        label='Password Baru', required=False, widget=forms.PasswordInput(attrs=ADMIN_TEXT_ATTRS),
+        label='Password Baru', required=False,
+        widget=forms.PasswordInput(attrs={**ADMIN_TEXT_ATTRS, 'style': 'padding-right:44px;'}),
         help_text='Kosongkan jika tidak ingin mengubah password.',
     )
 
@@ -410,9 +411,9 @@ class StyledPasswordChangeForm(PasswordChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
-        self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
-        self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})
+        self.fields['old_password'].widget.attrs.update({'class': 'form-control', 'style': 'padding-right:44px;'})
+        self.fields['new_password1'].widget.attrs.update({'class': 'form-control', 'style': 'padding-right:44px;'})
+        self.fields['new_password2'].widget.attrs.update({'class': 'form-control', 'style': 'padding-right:44px;'})
         self.fields['old_password'].label = 'Password Saat Ini'
         self.fields['new_password1'].label = 'Password Baru'
         self.fields['new_password2'].label = 'Ulangi Password Baru'
