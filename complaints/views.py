@@ -262,6 +262,15 @@ def dashboard(request):
         for row in outlet_ranking_qs
     ]
 
+    city_ranking_qs = qs.values('branch__city__name').annotate(
+        total=Count('id'),
+        overdue=Count('id', filter=overdue_filter),
+    ).order_by('-total')
+    city_ranking = [
+        {'name': row['branch__city__name'] or '-', 'total': row['total'], 'overdue': row['overdue']}
+        for row in city_ranking_qs
+    ]
+
     recent_complaints = qs.order_by('-created_at')[:8]
 
     # ------------------------------------------------------------------
@@ -310,6 +319,7 @@ def dashboard(request):
         'by_category': by_category,
         'by_branch': by_branch,
         'outlet_ranking': outlet_ranking,
+        'city_ranking': city_ranking,
         'recent_complaints': recent_complaints,
         'chart_data': chart_data,
         'available_cities': available_cities,

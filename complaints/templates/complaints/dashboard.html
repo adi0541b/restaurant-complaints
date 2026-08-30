@@ -40,6 +40,7 @@
 
 {{ chart_data|json_script:"chart-data" }}
 {{ outlet_ranking|json_script:"outlet-ranking-data" }}
+{{ city_ranking|json_script:"city-ranking-data" }}
 
 <div class="card">
     <h2>Tren Komplain (14 Hari Terakhir)</h2>
@@ -86,6 +87,23 @@
     </table>
     <div style="margin-top:14px;"><a href="{% url 'complaints:complaint_list' %}" class="btn btn-outline">Lihat Semua Komplain</a></div>
 </div>
+
+{% if city_ranking|length > 1 %}
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <h2 style="margin:0;">Ranking Kota</h2>
+        <div>
+            <button type="button" id="city-rank-by-total-btn" class="btn btn-primary" onclick="setCityRankMetric('total')" style="padding:8px 16px;font-size:0.85rem;">Jumlah Komplain</button>
+            <button type="button" id="city-rank-by-overdue-btn" class="btn btn-outline" onclick="setCityRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat SLA</button>
+        </div>
+    </div>
+    <canvas id="cityRankingChart" height="180" style="margin-top:16px;"></canvas>
+    <table style="margin-top:16px;">
+        <thead><tr><th style="width:60px;">#</th><th>Kota</th><th>Jumlah Komplain</th><th>Lewat SLA</th></tr></thead>
+        <tbody id="city-ranking-table-body"></tbody>
+    </table>
+</div>
+{% endif %}
 
 {% if outlet_ranking|length > 1 %}
 <div class="card">
@@ -181,31 +199,24 @@
         });
 
         renderRankingChart('total');
+        renderCityRankingChart('total');
     }
 
     // ------------------------------------------------------------------
-    // Ranking Outlet: tabel + grafik, bisa toggle antara Jumlah Komplain
-    // dan Lewat SLA, diurutkan dari tertinggi ke terendah.
+    // Ranking Outlet & Ranking Kota: tabel + grafik, bisa toggle antara
+    // Jumlah Komplain dan Lewat SLA, diurutkan dari tertinggi ke terendah.
     // ------------------------------------------------------------------
     let rankingChartInstance = null;
-    window.currentRankMetric = 'total';
+    let cityRankingChartInstance = null;
 
-    window.setRankMetric = function (metric) {
-        window.currentRankMetric = metric;
-        document.getElementById('rank-by-total-btn').className = metric === 'total' ? 'btn btn-primary' : 'btn btn-outline';
-        document.getElementById('rank-by-overdue-btn').className = metric === 'overdue' ? 'btn btn-primary' : 'btn btn-outline';
-        renderRankingChart(metric);
-    };
-
-    function renderRankingChart(metric) {
-        const rankingEl = document.getElementById('outlet-ranking-data');
-        if (!rankingEl || typeof Chart === 'undefined') return;
+    function renderGenericRanking(dataElId, tableBodyId, canvasId, metric, existingChart) {
+        const rankingEl = document.getElementById(dataElId);
+        if (!rankingEl || typeof Chart === 'undefined') return existingChart;
         const rawData = JSON.parse(rankingEl.textContent);
 
         const sorted = [...rawData].sort((a, b) => b[metric] - a[metric]);
 
-        // Tabel
-        const tbody = document.getElementById('ranking-table-body');
+        const tbody = document.getElementById(tableBodyId);
         tbody.innerHTML = '';
         sorted.forEach((row, i) => {
             const tr = document.createElement('tr');
@@ -213,15 +224,14 @@
             tbody.appendChild(tr);
         });
 
-        // Grafik batang horizontal, maksimal 10 outlet teratas agar tetap terbaca
         const top = sorted.slice(0, 10);
         const chartLabels = top.map(r => r.name);
         const chartValues = top.map(r => r[metric]);
         const chartColor = metric === 'overdue' ? '#B00020' : '#7A1F1F';
         const chartLabel = metric === 'overdue' ? 'Lewat SLA' : 'Jumlah Komplain';
 
-        if (rankingChartInstance) rankingChartInstance.destroy();
-        rankingChartInstance = new Chart(document.getElementById('rankingChart'), {
+        if (existingChart) existingChart.destroy();
+        return new Chart(document.getElementById(canvasId), {
             type: 'bar',
             data: {
                 labels: chartLabels,
@@ -233,6 +243,30 @@
                 scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         });
+    }
+
+    window.setRankMetric = function (metric) {
+        document.getElementById('rank-by-total-btn').className = metric === 'total' ? 'btn btn-primary' : 'btn btn-outline';
+        document.getElementById('rank-by-overdue-btn').className = metric === 'overdue' ? 'btn btn-primary' : 'btn btn-outline';
+        renderRankingChart(metric);
+    };
+
+    window.setCityRankMetric = function (metric) {
+        document.getElementById('city-rank-by-total-btn').className = metric === 'total' ? 'btn btn-primary' : 'btn btn-outline';
+        document.getElementById('city-rank-by-overdue-btn').className = metric === 'overdue' ? 'btn btn-primary' : 'btn btn-outline';
+        renderCityRankingChart(metric);
+    };
+
+    function renderRankingChart(metric) {
+        rankingChartInstance = renderGenericRanking(
+            'outlet-ranking-data', 'ranking-table-body', 'rankingChart', metric, rankingChartInstance
+        );
+    }
+
+    function renderCityRankingChart(metric) {
+        cityRankingChartInstance = renderGenericRanking(
+            'city-ranking-data', 'city-ranking-table-body', 'cityRankingChart', metric, cityRankingChartInstance
+        );
     }
 
     // Coba CDN pertama (jsDelivr). Jika gagal, coba CDN kedua (cdnjs).
