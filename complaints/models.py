@@ -259,6 +259,10 @@ class Complaint(models.Model):
     )
     resolution_notes = models.TextField('Akar Masalah', blank=True)
     internal_notes = models.TextField('Solusi', blank=True)
+    solution_photo = models.ImageField(
+        'Foto Solusi', upload_to='solution_photos/%Y/%m/', null=True, blank=True,
+        help_text='Opsional. Foto bukti/pendukung solusi yang diberikan.',
+    )
 
     # --- Gerbang 1: Validator mengonfirmasi Solusi, baru Staff bisa isi Validasi ---
     solution_confirmed = models.BooleanField('Solusi Dikonfirmasi Validator', default=False)

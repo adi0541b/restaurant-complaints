@@ -114,7 +114,7 @@ class ComplaintUpdateForm(forms.ModelForm):
         model = Complaint
         fields = [
             'status', 'severity', 'resolution_notes',
-            'internal_notes', 'solution_confirmed', 'validation_notes', 'validated',
+            'internal_notes', 'solution_photo', 'solution_confirmed', 'validation_notes', 'validated',
             'manager_response', 'lo_followup',
         ]
         widgets = {
@@ -126,6 +126,7 @@ class ComplaintUpdateForm(forms.ModelForm):
             'internal_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Solusi/tindakan yang diberikan'}),
+            'solution_photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'solution_confirmed': forms.CheckboxInput(),
             'validation_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
@@ -141,6 +142,7 @@ class ComplaintUpdateForm(forms.ModelForm):
         labels = {
             'resolution_notes': 'Akar Masalah',
             'internal_notes': 'Solusi',
+            'solution_photo': 'Foto Solusi (opsional)',
             'solution_confirmed': 'Centang: Solusi sudah benar (mengizinkan Staff mengisi Validasi)',
             'validation_notes': 'Validasi',
             'validated': 'Centang: Validasi sudah benar (menyelesaikan komplain)',
@@ -170,6 +172,12 @@ class ComplaintUpdateForm(forms.ModelForm):
         if 'internal_notes' in self.fields:
             if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
                 del self.fields['internal_notes']
+
+        # Foto Solusi (opsional): sama seperti Solusi (teks) -- muncul & bisa
+        # diedit bersamaan, tidak wajib diisi.
+        if 'solution_photo' in self.fields:
+            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
+                del self.fields['solution_photo']
 
         # [Gerbang 1] Solusi Dikonfirmasi Validator: hanya Validator,
         # muncul setelah Solusi terisi

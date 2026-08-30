@@ -82,7 +82,7 @@ class ComplaintAdmin(admin.ModelAdmin):
             'fields': ('category', 'detail_item', 'description', 'photo_evidence'),
         }),
         ('Penanganan', {
-            'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'solution_confirmed', 'validation_notes', 'sla_deadline', 'resolved_at'),
+            'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'solution_photo', 'solution_confirmed', 'validation_notes', 'sla_deadline', 'resolved_at'),
         }),
         ('Validasi', {
             'fields': ('validated', 'validated_by', 'validated_at'),

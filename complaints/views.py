@@ -386,7 +386,7 @@ def complaint_detail(request, pk):
         was_solution_confirmed = complaint.solution_confirmed
         was_validated = complaint.validated
 
-        form = ComplaintUpdateForm(request.POST, instance=complaint, profile=profile)
+        form = ComplaintUpdateForm(request.POST, request.FILES, instance=complaint, profile=profile)
         if form.is_valid():
             updated = form.save(commit=False)
 
