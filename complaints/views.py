@@ -246,6 +246,22 @@ def dashboard(request):
     by_category = qs.values('category').annotate(total=Count('id')).order_by('-total')
     by_branch = qs.values('branch__name').annotate(total=Count('id')).order_by('-total')
 
+    # ------------------------------------------------------------------
+    # Ranking Outlet: jumlah komplain & jumlah lewat SLA per outlet
+    # ------------------------------------------------------------------
+    now = timezone.now()
+    overdue_filter = Q(sla_deadline__lt=now) & ~Q(
+        status__in=[Complaint.Status.SELESAI, Complaint.Status.DITOLAK]
+    )
+    outlet_ranking_qs = qs.values('branch__name').annotate(
+        total=Count('id'),
+        overdue=Count('id', filter=overdue_filter),
+    ).order_by('-total')
+    outlet_ranking = [
+        {'name': row['branch__name'] or '-', 'total': row['total'], 'overdue': row['overdue']}
+        for row in outlet_ranking_qs
+    ]
+
     recent_complaints = qs.order_by('-created_at')[:8]
 
     # ------------------------------------------------------------------
@@ -293,6 +309,7 @@ def dashboard(request):
         'stats': stats,
         'by_category': by_category,
         'by_branch': by_branch,
+        'outlet_ranking': outlet_ranking,
         'recent_complaints': recent_complaints,
         'chart_data': chart_data,
         'available_cities': available_cities,

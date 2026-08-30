@@ -39,6 +39,7 @@
 </div>
 
 {{ chart_data|json_script:"chart-data" }}
+{{ outlet_ranking|json_script:"outlet-ranking-data" }}
 
 <div class="card">
     <h2>Tren Komplain (14 Hari Terakhir)</h2>
@@ -86,16 +87,19 @@
     <div style="margin-top:14px;"><a href="{% url 'complaints:complaint_list' %}" class="btn btn-outline">Lihat Semua Komplain</a></div>
 </div>
 
-{% if by_branch|length > 1 %}
+{% if outlet_ranking|length > 1 %}
 <div class="card">
-    <h2>Komplain per Outlet</h2>
-    <table>
-        <thead><tr><th>Outlet</th><th>Jumlah</th></tr></thead>
-        <tbody>
-        {% for row in by_branch %}
-            <tr><td>{{ row.branch__name }}</td><td>{{ row.total }}</td></tr>
-        {% endfor %}
-        </tbody>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <h2 style="margin:0;">Ranking Outlet</h2>
+        <div>
+            <button type="button" id="rank-by-total-btn" class="btn btn-primary" onclick="setRankMetric('total')" style="padding:8px 16px;font-size:0.85rem;">Jumlah Komplain</button>
+            <button type="button" id="rank-by-overdue-btn" class="btn btn-outline" onclick="setRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat SLA</button>
+        </div>
+    </div>
+    <canvas id="rankingChart" height="180" style="margin-top:16px;"></canvas>
+    <table style="margin-top:16px;">
+        <thead><tr><th style="width:60px;">#</th><th>Outlet</th><th>Jumlah Komplain</th><th>Lewat SLA</th></tr></thead>
+        <tbody id="ranking-table-body"></tbody>
     </table>
 </div>
 {% endif %}
@@ -173,6 +177,60 @@
             options: {
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+
+        renderRankingChart('total');
+    }
+
+    // ------------------------------------------------------------------
+    // Ranking Outlet: tabel + grafik, bisa toggle antara Jumlah Komplain
+    // dan Lewat SLA, diurutkan dari tertinggi ke terendah.
+    // ------------------------------------------------------------------
+    let rankingChartInstance = null;
+    window.currentRankMetric = 'total';
+
+    window.setRankMetric = function (metric) {
+        window.currentRankMetric = metric;
+        document.getElementById('rank-by-total-btn').className = metric === 'total' ? 'btn btn-primary' : 'btn btn-outline';
+        document.getElementById('rank-by-overdue-btn').className = metric === 'overdue' ? 'btn btn-primary' : 'btn btn-outline';
+        renderRankingChart(metric);
+    };
+
+    function renderRankingChart(metric) {
+        const rankingEl = document.getElementById('outlet-ranking-data');
+        if (!rankingEl || typeof Chart === 'undefined') return;
+        const rawData = JSON.parse(rankingEl.textContent);
+
+        const sorted = [...rawData].sort((a, b) => b[metric] - a[metric]);
+
+        // Tabel
+        const tbody = document.getElementById('ranking-table-body');
+        tbody.innerHTML = '';
+        sorted.forEach((row, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${i + 1}</td><td>${row.name}</td><td>${row.total}</td><td>${row.overdue > 0 ? '<span class="badge badge-overdue">' + row.overdue + '</span>' : row.overdue}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        // Grafik batang horizontal, maksimal 10 outlet teratas agar tetap terbaca
+        const top = sorted.slice(0, 10);
+        const chartLabels = top.map(r => r.name);
+        const chartValues = top.map(r => r[metric]);
+        const chartColor = metric === 'overdue' ? '#B00020' : '#7A1F1F';
+        const chartLabel = metric === 'overdue' ? 'Lewat SLA' : 'Jumlah Komplain';
+
+        if (rankingChartInstance) rankingChartInstance.destroy();
+        rankingChartInstance = new Chart(document.getElementById('rankingChart'), {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{ label: chartLabel, data: chartValues, backgroundColor: chartColor }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         });
     }
