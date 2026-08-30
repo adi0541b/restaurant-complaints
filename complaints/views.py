@@ -547,6 +547,8 @@ def user_create(request):
             user = form.save()
             messages.success(request, f'Akun "{user.username}" berhasil dibuat.')
             return redirect('complaints:user_list')
+        else:
+            messages.error(request, 'Akun GAGAL dibuat. Periksa kesalahan yang ditandai di bawah ini.')
     else:
         form = StaffAccountCreateForm()
     return render(request, 'complaints/user_form.html', {'form': form, 'is_create': True})
@@ -561,6 +563,8 @@ def user_edit(request, pk):
             form.save()
             messages.success(request, f'Akun "{user_obj.username}" berhasil diperbarui.')
             return redirect('complaints:user_list')
+        else:
+            messages.error(request, 'Perubahan GAGAL disimpan. Periksa kesalahan yang ditandai di bawah ini.')
     else:
         form = StaffAccountEditForm(instance=user_obj)
     return render(request, 'complaints/user_form.html', {

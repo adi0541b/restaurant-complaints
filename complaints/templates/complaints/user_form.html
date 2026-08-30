@@ -5,24 +5,38 @@
 <p class="subtitle"><a href="{% url 'complaints:user_list' %}">&larr; Kembali ke Daftar User</a></p>
 
 <div class="card">
+    {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+    {% endif %}
     <form method="post">
         {% csrf_token %}
         {{ form.username.label_tag }}{{ form.username }}
+        {% for error in form.username.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
+
         {{ form.first_name.label_tag }}{{ form.first_name }}
+        {% for error in form.first_name.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
+
         {{ form.last_name.label_tag }}{{ form.last_name }}
+        {% for error in form.last_name.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
+
         {{ form.email.label_tag }}{{ form.email }}
+        {% for error in form.email.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
 
         <h3>Peran &amp; Cakupan Akses</h3>
         {{ form.role.label_tag }}{{ form.role }}
+        {% for error in form.role.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
         <div id="branch-field-wrapper">
             {{ form.branch.label_tag }}{{ form.branch }}
             {% if form.branch.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.branch.help_text }}</p>{% endif %}
+            {% for error in form.branch.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
         </div>
         <div id="city-field-wrapper">
             {{ form.city.label_tag }}{{ form.city }}
             {% if form.city.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.city.help_text }}</p>{% endif %}
+            {% for error in form.city.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
         </div>
         {{ form.phone.label_tag }}{{ form.phone }}
+        {% for error in form.phone.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
 
         {% if is_create %}
             <h3>Password</h3>
@@ -34,6 +48,8 @@
                     <svg id="eye-closed-id_password1" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
             </div>
+            {% for error in form.password1.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
+
             {{ form.password2.label_tag }}
             <div style="position:relative;">
                 {{ form.password2 }}
@@ -42,6 +58,7 @@
                     <svg id="eye-closed-id_password2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.06M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-3.22 4.44M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
             </div>
+            {% for error in form.password2.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
         {% else %}
             <h3>Ubah Password (opsional)</h3>
             {{ form.new_password.label_tag }}
@@ -53,6 +70,7 @@
                 </button>
             </div>
             {% if form.new_password.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.new_password.help_text }}</p>{% endif %}
+            {% for error in form.new_password.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
             <label style="display:flex;align-items:center;gap:8px;margin-top:16px;">
                 {{ form.is_active }} <span style="font-weight:normal;">Akun Aktif</span>
             </label>

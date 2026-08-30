@@ -113,8 +113,8 @@ class ComplaintUpdateForm(forms.ModelForm):
     class Meta:
         model = Complaint
         fields = [
-            'status', 'severity', 'resolution_notes', 'internal_notes',
-            'solution_confirmed', 'validation_notes', 'validated',
+            'status', 'severity', 'resolution_notes',
+            'internal_notes', 'solution_confirmed', 'validation_notes', 'validated',
             'manager_response', 'lo_followup',
         ]
         widgets = {
@@ -159,13 +159,13 @@ class ComplaintUpdateForm(forms.ModelForm):
             del self.fields['status']
             del self.fields['severity']
 
-        # Akar Masalah: hanya Staff/PIC Outlet, DAN hanya selama belum dikonfirmasi
+        # Akar Masalah: hanya QC/Trainer, DAN hanya selama belum dikonfirmasi akhir
         if not (profile and profile.can_handle_case) or sudah_dikonfirmasi:
             if 'resolution_notes' in self.fields:
                 del self.fields['resolution_notes']
 
-        # Solusi: hanya Staff/PIC Outlet, muncul setelah Akar Masalah terisi,
-        # DAN hanya selama belum dikonfirmasi
+        # Solusi: hanya QC/Trainer, muncul setelah Akar Masalah terisi,
+        # DAN hanya selama belum dikonfirmasi akhir
         akar_masalah_sudah_terisi = bool(self.instance and self.instance.resolution_notes)
         if 'internal_notes' in self.fields:
             if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
@@ -180,7 +180,7 @@ class ComplaintUpdateForm(forms.ModelForm):
             elif self.instance.solution_confirmed:
                 self.fields['solution_confirmed'].disabled = True
 
-        # Validasi (teks): hanya Staff/PIC Outlet, muncul setelah Gerbang 1
+        # Validasi (teks): hanya QC/Trainer, muncul setelah Gerbang 1
         # dicentang Validator, DAN hanya selama belum dikonfirmasi akhir
         gerbang1_sudah_dicentang = bool(self.instance and self.instance.solution_confirmed)
         if 'validation_notes' in self.fields:
