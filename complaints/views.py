@@ -83,7 +83,6 @@ def home_submission(request):
     """
     profile = getattr(request.user, 'staff_profile', None)
     if profile is None or not profile.is_input_staff:
-        messages.info(request, 'Halaman Input Komplain hanya untuk CS.')
         return redirect('complaints:dashboard')
 
     initial = {}
