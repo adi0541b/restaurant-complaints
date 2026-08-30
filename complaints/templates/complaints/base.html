@@ -24,6 +24,9 @@
                     <a href="{% url 'complaints:city_list' %}">Kelola Kota</a>
                     <a href="{% url 'complaints:admin_panel' %}">Panel Admin</a>
                 {% endif %}
+                {% if user.staff_profile.is_manager %}
+                    <a href="{% url 'complaints:manager_staff_list' %}">Kelola Nomor WA</a>
+                {% endif %}
                 <a href="{% url 'complaints:password_change' %}">Ganti Password</a>
                 <form method="post" action="{% url 'complaints:logout' %}" style="display:inline;margin-left:18px;">
                     {% csrf_token %}

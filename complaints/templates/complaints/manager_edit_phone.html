@@ -1,0 +1,20 @@
+{% extends "complaints/base.html" %}
+{% block title %}Edit Nomor WhatsApp - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Edit Nomor WhatsApp: {{ target.user.username }}</h1>
+<p class="subtitle"><a href="{% url 'complaints:manager_staff_list' %}">&larr; Kembali ke Daftar</a></p>
+
+<div class="card">
+    <p style="color:var(--text-muted);">
+        Peran: <strong>{{ target.get_role_display }}</strong>
+        {% if target.branch %} &middot; Outlet: <strong>{{ target.branch.name }}</strong>{% endif %}
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.phone.label_tag }}{{ form.phone }}
+        <div style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

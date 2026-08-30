@@ -1,0 +1,31 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kelola Nomor WhatsApp - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Kelola Nomor WhatsApp</h1>
+<p class="subtitle">
+    QC/Trainer &amp; Leader Outlet di kota {{ city.name|default:"-" }}. Anda hanya bisa mengubah nomor
+    WhatsApp, bukan data lain seperti peran atau password.
+</p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Username</th><th>Nama</th><th>Peran</th><th>Outlet</th><th>No. WhatsApp</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for p in staff_profiles %}
+            <tr>
+                <td>{{ p.user.username }}</td>
+                <td>{{ p.user.get_full_name|default:"-" }}</td>
+                <td>{{ p.get_role_display }}</td>
+                <td>{{ p.branch.name|default:"-" }}</td>
+                <td>{{ p.phone|default:"-" }}</td>
+                <td><a href="{% url 'complaints:manager_edit_phone' p.pk %}" class="btn btn-outline">Edit Nomor</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">Belum ada QC/Trainer atau Leader Outlet di kota Anda.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

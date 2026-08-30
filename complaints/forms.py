@@ -416,3 +416,16 @@ class StyledPasswordChangeForm(PasswordChangeForm):
         self.fields['old_password'].label = 'Password Saat Ini'
         self.fields['new_password1'].label = 'Password Baru'
         self.fields['new_password2'].label = 'Ulangi Password Baru'
+
+
+class StaffPhoneEditForm(forms.ModelForm):
+    """Form minimal: HANYA nomor WhatsApp. Dipakai Manager Area untuk mengubah
+    nomor QC/Trainer & Leader Outlet di kotanya sendiri (tidak bisa ubah field lain)."""
+
+    class Meta:
+        model = StaffProfile
+        fields = ['phone']
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '08xxxxxxxxxx'}),
+        }
+        labels = {'phone': 'No. WhatsApp'}

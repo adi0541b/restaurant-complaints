@@ -24,6 +24,7 @@ from .forms import (
     SiteSettingsForm,
     StaffAccountCreateForm,
     StaffAccountEditForm,
+    StaffPhoneEditForm,
     StatusCheckForm,
     StyledPasswordChangeForm,
 )
@@ -55,6 +56,18 @@ def input_staff_required(view_func):
         profile = getattr(request.user, 'staff_profile', None)
         if profile is None or not profile.is_input_staff:
             raise PermissionDenied('Hanya Staff Input Komplain yang dapat mengakses halaman ini.')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def manager_required(view_func):
+    """Membatasi akses HANYA untuk user dengan peran Manager Area."""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        profile = getattr(request.user, 'staff_profile', None)
+        if profile is None or not profile.is_manager:
+            raise PermissionDenied('Hanya Manager Area yang dapat mengakses halaman ini.')
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -739,4 +752,57 @@ def detail_item_edit(request, pk):
         form = ComplaintDetailItemForm(instance=item)
     return render(request, 'complaints/detail_item_form.html', {
         'form': form, 'is_create': False, 'item': item,
+    })
+
+
+# =============================================================================
+# MANAGER AREA: kelola nomor WhatsApp QC/Trainer & Leader Outlet di kotanya
+# =============================================================================
+@manager_required
+def manager_staff_list(request):
+    profile = request.user.staff_profile
+    city = profile.city
+
+    if city:
+        staff_profiles = StaffProfile.objects.filter(
+            Q(role=StaffProfile.Role.QC_TRAINER, city=city) |
+            Q(role=StaffProfile.Role.STAFF, branch__city=city)
+        ).select_related('user', 'branch', 'city').order_by('role', 'user__username')
+    else:
+        staff_profiles = StaffProfile.objects.none()
+
+    return render(request, 'complaints/manager_staff_list.html', {
+        'staff_profiles': staff_profiles, 'city': city,
+    })
+
+
+@manager_required
+def manager_edit_phone(request, pk):
+    profile = request.user.staff_profile
+    city = profile.city
+    target = get_object_or_404(StaffProfile, pk=pk)
+
+    # Pastikan target BENAR-BENAR dalam cakupan kota Manager Area ini,
+    # supaya tidak bisa mengubah nomor QC/Trainer atau Leader Outlet kota lain.
+    in_scope = False
+    if city:
+        if target.role == StaffProfile.Role.QC_TRAINER and target.city_id == city.id:
+            in_scope = True
+        elif target.role == StaffProfile.Role.STAFF and target.branch and target.branch.city_id == city.id:
+            in_scope = True
+
+    if not in_scope:
+        raise PermissionDenied('Anda tidak berhak mengubah data user ini.')
+
+    if request.method == 'POST':
+        form = StaffPhoneEditForm(request.POST, instance=target)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Nomor WhatsApp "{target.user.username}" berhasil diperbarui.')
+            return redirect('complaints:manager_staff_list')
+    else:
+        form = StaffPhoneEditForm(instance=target)
+
+    return render(request, 'complaints/manager_edit_phone.html', {
+        'form': form, 'target': target,
     })
