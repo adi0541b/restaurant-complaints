@@ -218,6 +218,17 @@ def _visible_complaints_for(user):
 def dashboard(request):
     qs = _visible_complaints_for(request.user)
 
+    # Filter Kota (khusus role yang punya akses ke semua kota, mis. Pusat/Admin/CS)
+    profile = getattr(request.user, 'staff_profile', None)
+    available_cities = City.objects.none()
+    selected_city_id = request.GET.get('kota') or ''
+    selected_city = None
+    if profile and profile.has_full_visibility:
+        available_cities = City.objects.filter(is_active=True).order_by('name')
+        if selected_city_id:
+            qs = qs.filter(branch__city_id=selected_city_id)
+            selected_city = available_cities.filter(pk=selected_city_id).first()
+
     stats = {
         'total': qs.count(),
         'baru': qs.filter(status=Complaint.Status.BARU).count(),
@@ -284,6 +295,9 @@ def dashboard(request):
         'by_branch': by_branch,
         'recent_complaints': recent_complaints,
         'chart_data': chart_data,
+        'available_cities': available_cities,
+        'selected_city_id': selected_city_id,
+        'selected_city': selected_city,
     }
     return render(request, 'complaints/dashboard.html', context)
 
@@ -430,9 +444,12 @@ def export_complaints_excel(request):
     severity = request.GET.get('severity')
     search = request.GET.get('q')
     only_overdue = request.GET.get('overdue')
+    kota = request.GET.get('kota')
 
     if status:
         qs = qs.filter(status=status)
+    if kota:
+        qs = qs.filter(branch__city_id=kota)
     if severity:
         qs = qs.filter(severity=severity)
     if search:
