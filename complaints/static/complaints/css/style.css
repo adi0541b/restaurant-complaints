@@ -286,5 +286,12 @@ tr:hover { background: #FFFBF2; }
   div[style*="display:flex;justify-content:space-between"] {
     flex-direction: column;
     align-items: stretch !important;
+    margin-bottom: 6px;
   }
+
+  /* .subtitle biasanya diberi margin-top negatif supaya rapat ke judul di
+     tata letak desktop (judul & tombol sejajar) -- tapi di HP, judul & tombol
+     ditumpuk (lebih tinggi), jadi margin negatif itu malah bikin teks di
+     bawahnya (mis. "Kembali ke Panel Admin") menimpa tombol di atasnya. */
+  .subtitle { margin-top: 8px; }
 }
