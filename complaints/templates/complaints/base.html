@@ -11,9 +11,12 @@
     <nav class="navbar">
         <a href="{% url 'complaints:home' %}" class="brand" style="display:flex;align-items:center;gap:10px;">
             {% if BRAND_LOGO_URL %}<img src="{{ BRAND_LOGO_URL }}" alt="Logo" style="height:32px;width:auto;border-radius:4px;">{% endif %}
-            <span>{{ BRAND_NAME }} &middot; Layanan Komplain</span>
+            <span>{{ BRAND_NAME }}</span>
         </a>
-        <div class="nav-links">
+        <button class="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
             {% if user.is_authenticated %}
                 {% if user.staff_profile.is_input_staff %}
                     <a href="{% url 'complaints:home' %}">Input Komplain</a>
@@ -28,15 +31,22 @@
                     <a href="{% url 'complaints:manager_staff_list' %}">Kelola Nomor WA</a>
                 {% endif %}
                 <a href="{% url 'complaints:password_change' %}">Ganti Password</a>
-                <form method="post" action="{% url 'complaints:logout' %}" style="display:inline;margin-left:18px;">
+                <form method="post" action="{% url 'complaints:logout' %}" class="nav-logout-form">
                     {% csrf_token %}
-                    <button type="submit" style="background:none;border:none;color:#fff;font-weight:500;opacity:0.9;cursor:pointer;font-size:1em;padding:0;font-family:inherit;">Keluar ({{ user.first_name|default:user.username }})</button>
+                    <button type="submit" class="nav-logout-btn">Keluar ({{ user.first_name|default:user.username }})</button>
                 </form>
             {% else %}
                 <a href="{% url 'complaints:login' %}">Login Staff</a>
             {% endif %}
         </div>
     </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            document.getElementById('nav-links').classList.toggle('nav-links-open');
+            document.querySelector('.hamburger-btn').classList.toggle('hamburger-open');
+        }
+    </script>
 
     <div class="container">
         {% if messages %}
