@@ -1,5 +1,5 @@
 import secrets
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from functools import wraps
 
 from django.contrib import messages
@@ -8,7 +8,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Q
-from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -277,22 +276,26 @@ def dashboard(request):
     # Data untuk grafik (Chart.js) di dashboard
     # ------------------------------------------------------------------
     # 1) Tren jumlah komplain per hari, 14 hari terakhir
+    #
+    # CATATAN: sengaja TIDAK memakai TruncDate() dari Django ORM di sini.
+    # TruncDate() di MySQL butuh CONVERT_TZ() yang bergantung pada tabel
+    # timezone internal MySQL (mysql.time_zone_name) -- di banyak VPS/shared
+    # hosting (termasuk Webuzo tanpa akses root), tabel ini belum ter-load,
+    # sehingga TruncDate() diam-diam mengembalikan NULL untuk semua baris.
+    # Solusi: ambil created_at mentah, lalu kelompokkan per tanggal di Python.
+    # ------------------------------------------------------------------
     today = timezone.localdate()
     start_day = today - timedelta(days=13)
-    trend_qs = (
-        qs.filter(created_at__date__gte=start_day)
-        .annotate(day=TruncDate('created_at'))
-        .values('day')
-        .annotate(total=Count('id'))
-    )
+    # Filter pakai perbandingan datetime LANGSUNG (bukan lookup '__date'),
+    # supaya sama sekali tidak memicu CONVERT_TZ di MySQL (lihat catatan di atas).
+    start_datetime = timezone.make_aware(datetime.combine(start_day, time.min))
+    recent_created_ats = qs.filter(created_at__gte=start_datetime).values_list('created_at', flat=True)
+
     trend_by_day = {}
-    for row in trend_qs:
-        day_value = row['day']
-        # MySQL/PyMySQL kadang mengembalikan datetime, bukan date murni --
-        # normalisasi supaya pencocokan dengan objek date di bawah tidak gagal.
-        if hasattr(day_value, 'date'):
-            day_value = day_value.date()
-        trend_by_day[day_value] = row['total']
+    for created_at in recent_created_ats:
+        day_value = timezone.localtime(created_at).date()
+        trend_by_day[day_value] = trend_by_day.get(day_value, 0) + 1
+
     trend_labels = []
     trend_values = []
     for i in range(14):
