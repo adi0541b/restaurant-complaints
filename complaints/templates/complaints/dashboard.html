@@ -69,7 +69,7 @@
                 <td><a href="{% url 'complaints:complaint_detail' c.pk %}">{{ c.code }}</a></td>
                 <td>{{ c.customer_name }}</td>
                 <td>{{ c.customer_phone }}</td>
-                <td>{{ c.branch.code }}</td>
+                <td>{{ c.branch.name }}</td>
                 <td>{{ c.get_category_display }}</td>
                 <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
                 <td>{% if c.is_overdue %}<span class="badge badge-overdue">Lewat</span>{% else %}OK{% endif %}</td>
