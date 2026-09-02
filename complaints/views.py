@@ -228,6 +228,41 @@ def dashboard(request):
             qs = qs.filter(branch__city_id=selected_city_id)
             selected_city = available_cities.filter(pk=selected_city_id).first()
 
+    # ------------------------------------------------------------------
+    # Filter Periode: default siklus tanggal 26 - 25 (mengikuti tanggal hari
+    # ini), bisa diganti manual lewat form.
+    # ------------------------------------------------------------------
+    today = timezone.localdate()
+    if today.day >= 26:
+        default_start = today.replace(day=26)
+        if today.month == 12:
+            default_end = today.replace(year=today.year + 1, month=1, day=25)
+        else:
+            default_end = today.replace(month=today.month + 1, day=25)
+    else:
+        default_end = today.replace(day=25)
+        if today.month == 1:
+            default_start = today.replace(year=today.year - 1, month=12, day=26)
+        else:
+            default_start = today.replace(month=today.month - 1, day=26)
+
+    period_start_raw = request.GET.get('mulai')
+    period_end_raw = request.GET.get('selesai')
+    try:
+        period_start = datetime.strptime(period_start_raw, '%Y-%m-%d').date() if period_start_raw else default_start
+    except ValueError:
+        period_start = default_start
+    try:
+        period_end = datetime.strptime(period_end_raw, '%Y-%m-%d').date() if period_end_raw else default_end
+    except ValueError:
+        period_end = default_end
+
+    # Perbandingan datetime LANGSUNG (bukan lookup '__date'), supaya tidak
+    # memicu CONVERT_TZ di MySQL (lihat catatan di bagian Tren Komplain).
+    period_start_dt = timezone.make_aware(datetime.combine(period_start, time.min))
+    period_end_dt = timezone.make_aware(datetime.combine(period_end + timedelta(days=1), time.min))
+    qs = qs.filter(created_at__gte=period_start_dt, created_at__lt=period_end_dt)
+
     stats = {
         'total': qs.count(),
         'baru': qs.filter(status=Complaint.Status.BARU).count(),
@@ -329,6 +364,8 @@ def dashboard(request):
         'available_cities': available_cities,
         'selected_city_id': selected_city_id,
         'selected_city': selected_city,
+        'period_start': period_start,
+        'period_end': period_end,
     }
     return render(request, 'complaints/dashboard.html', context)
 
@@ -461,11 +498,25 @@ def export_complaints_excel(request):
     search = request.GET.get('q')
     only_overdue = request.GET.get('overdue')
     kota = request.GET.get('kota')
+    mulai_raw = request.GET.get('mulai')
+    selesai_raw = request.GET.get('selesai')
 
     if status:
         qs = qs.filter(status=status)
     if kota:
         qs = qs.filter(branch__city_id=kota)
+    if mulai_raw:
+        try:
+            mulai = datetime.strptime(mulai_raw, '%Y-%m-%d').date()
+            qs = qs.filter(created_at__gte=timezone.make_aware(datetime.combine(mulai, time.min)))
+        except ValueError:
+            pass
+    if selesai_raw:
+        try:
+            selesai = datetime.strptime(selesai_raw, '%Y-%m-%d').date()
+            qs = qs.filter(created_at__lt=timezone.make_aware(datetime.combine(selesai + timedelta(days=1), time.min)))
+        except ValueError:
+            pass
     if search:
         qs = qs.filter(
             Q(code__icontains=search) |

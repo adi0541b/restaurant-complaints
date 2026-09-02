@@ -3,7 +3,7 @@
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
     <h1 style="margin:0;">Dashboard Komplain</h1>
-    <a href="{% url 'complaints:export_excel' %}{% if selected_city_id %}?kota={{ selected_city_id }}{% endif %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
+    <a href="{% url 'complaints:export_excel' %}?mulai={{ period_start|date:"Y-m-d" }}&selesai={{ period_end|date:"Y-m-d" }}{% if selected_city_id %}&kota={{ selected_city_id }}{% endif %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
 </div>
 <p class="subtitle">Ringkasan penanganan komplain -
 {% if request.user.staff_profile.branch %}
@@ -15,19 +15,33 @@
 {% else %}
     Semua Outlet
 {% endif %}
+&middot; Periode {{ period_start|date:"d M Y" }} - {{ period_end|date:"d M Y" }}
 </p>
 
-{% if available_cities %}
-<form method="get" class="filters" style="margin-bottom:20px;">
-    <label for="kota-filter" style="font-weight:600;margin-right:8px;">Kota:</label>
-    <select name="kota" id="kota-filter" class="form-select" onchange="this.form.submit()" style="width:auto;display:inline-block;">
-        <option value="">-- Semua Kota --</option>
-        {% for city in available_cities %}
-            <option value="{{ city.pk }}" {% if selected_city_id == city.pk|stringformat:"s" %}selected{% endif %}>{{ city.name }}</option>
-        {% endfor %}
-    </select>
+<form method="get" class="filters" style="margin-bottom:20px;align-items:end;">
+    {% if available_cities %}
+    <div>
+        <label for="kota-filter" style="font-weight:600;display:block;margin-bottom:4px;">Kota:</label>
+        <select name="kota" id="kota-filter" class="form-select" style="width:auto;">
+            <option value="">-- Semua Kota --</option>
+            {% for city in available_cities %}
+                <option value="{{ city.pk }}" {% if selected_city_id == city.pk|stringformat:"s" %}selected{% endif %}>{{ city.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    <div>
+        <label for="mulai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Dari Tanggal:</label>
+        <input type="date" name="mulai" id="mulai-filter" class="form-control" value="{{ period_start|date:"Y-m-d" }}" style="width:auto;">
+    </div>
+    <div>
+        <label for="selesai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Sampai Tanggal:</label>
+        <input type="date" name="selesai" id="selesai-filter" class="form-control" value="{{ period_end|date:"Y-m-d" }}" style="width:auto;">
+    </div>
+    <div>
+        <button type="submit" class="btn btn-primary">Terapkan Filter</button>
+    </div>
 </form>
-{% endif %}
 
 <div class="stats-grid">
     <div class="stat-box"><div class="num">{{ stats.total }}</div><div class="label">Total Komplain</div></div>
