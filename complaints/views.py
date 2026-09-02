@@ -481,6 +481,22 @@ def complaint_detail(request, pk):
 
 
 # =============================================================================
+# HAPUS KOMPLAIN - HANYA Admin Pusat (mis. untuk komplain yang double-input)
+# =============================================================================
+@admin_pusat_required
+def complaint_delete(request, pk):
+    complaint = get_object_or_404(Complaint, pk=pk)
+
+    if request.method == 'POST':
+        kode = complaint.code
+        complaint.delete()
+        messages.success(request, f'Komplain {kode} berhasil dihapus.')
+        return redirect('complaints:complaint_list')
+
+    return render(request, 'complaints/complaint_confirm_delete.html', {'complaint': complaint})
+
+
+# =============================================================================
 # EXPORT KE EXCEL
 # =============================================================================
 @login_required

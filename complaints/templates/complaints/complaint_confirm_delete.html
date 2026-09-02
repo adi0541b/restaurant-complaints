@@ -1,0 +1,25 @@
+{% extends "complaints/base.html" %}
+{% block title %}Hapus Komplain {{ complaint.code }} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1 style="color:var(--danger);">⚠️ Hapus Komplain</h1>
+    <p>Anda akan menghapus komplain berikut secara <strong>permanen</strong>. Tindakan ini <strong>tidak bisa dibatalkan</strong>.</p>
+
+    <table style="margin:16px 0;">
+        <tr><th style="width:140px;">Kode</th><td>{{ complaint.code }}</td></tr>
+        <tr><th>Pelanggan</th><td>{{ complaint.customer_name }}</td></tr>
+        <tr><th>Outlet</th><td>{{ complaint.branch.name }}</td></tr>
+        <tr><th>Status</th><td>{{ complaint.get_status_display }}</td></tr>
+        <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Deskripsi</th><td>{{ complaint.description|truncatewords:20 }}</td></tr>
+    </table>
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:12px;margin-top:20px;">
+            <a href="{% url 'complaints:complaint_detail' complaint.pk %}" class="btn btn-outline" style="flex:1;text-align:center;">Batal</a>
+            <button type="submit" class="btn" style="flex:1;background:var(--danger);color:#fff;">Ya, Hapus Permanen</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

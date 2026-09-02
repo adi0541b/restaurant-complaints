@@ -1,11 +1,18 @@
 {% extends "complaints/base.html" %}
 {% block title %}{{ complaint.code }} - {{ BRAND_NAME }}{% endblock %}
 {% block content %}
-<h1>{{ complaint.code }}</h1>
-<p>
-    <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
-    {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat Deadline</span>{% endif %}
-</p>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+    <div>
+        <h1 style="margin:0;">{{ complaint.code }}</h1>
+        <p style="margin-top:8px;">
+            <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+            {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat Deadline</span>{% endif %}
+        </p>
+    </div>
+    {% if request.user.staff_profile.is_admin_pusat %}
+        <a href="{% url 'complaints:complaint_delete' complaint.pk %}" class="btn btn-outline" style="border-color:var(--danger);color:var(--danger);">🗑 Hapus Komplain</a>
+    {% endif %}
+</div>
 
 <div class="card" style="border-top-color:var(--maroon);background:#FBF3E3;">
     <h2 style="margin-top:0;">Kontak Pelanggan</h2>
