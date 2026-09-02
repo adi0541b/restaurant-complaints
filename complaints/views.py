@@ -285,7 +285,14 @@ def dashboard(request):
         .values('day')
         .annotate(total=Count('id'))
     )
-    trend_by_day = {row['day']: row['total'] for row in trend_qs}
+    trend_by_day = {}
+    for row in trend_qs:
+        day_value = row['day']
+        # MySQL/PyMySQL kadang mengembalikan datetime, bukan date murni --
+        # normalisasi supaya pencocokan dengan objek date di bawah tidak gagal.
+        if hasattr(day_value, 'date'):
+            day_value = day_value.date()
+        trend_by_day[day_value] = row['total']
     trend_labels = []
     trend_values = []
     for i in range(14):
