@@ -390,13 +390,14 @@ class Complaint(models.Model):
         if is_new and not self.code:
             self.code = self.generate_code()
 
-        # created_at belum tersedia sebelum penyimpanan pertama; hitung ulang
-        # sla_deadline setelah created_at diketahui, atau saat severity berubah.
-        super().save(*args, **kwargs)
-
-        if is_new or not self.sla_deadline:
+        # Hitung Deadline SEBELUM disimpan (bukan setelahnya), supaya saat
+        # notifikasi WhatsApp/email terkirim di sinyal post_save, field
+        # sla_deadline sudah terisi (bukan kosong/None). calculate_sla_deadline()
+        # otomatis memakai waktu sekarang kalau created_at belum ada.
+        if is_new and not self.sla_deadline:
             self.sla_deadline = self.calculate_sla_deadline()
-            super().save(update_fields=['sla_deadline'])
+
+        super().save(*args, **kwargs)
 
 
 class ComplaintTimelineEntry(models.Model):

@@ -79,13 +79,12 @@ def send_new_complaint_notifications(complaint):
     if staff_emails:
         try:
             send_mail(
-                subject=f'[Komplain Baru] {complaint.code} - {complaint.get_severity_display()}',
+                subject=f'[Komplain Baru] {complaint.code}',
                 message=(
                     f'Ada komplain baru masuk di {complaint.branch.name}.\n\n'
                     f'Kode: {complaint.code}\n'
                     f'Kategori: {complaint.get_category_display()}\n'
-                    f'Tingkat: {complaint.get_severity_display()}\n'
-                    f'Batas Deadline: {complaint.sla_deadline}\n\n'
+                    f'Batas Deadline: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n\n'
                     f'Deskripsi: {complaint.description}\n\n'
                     f'Segera tindak lanjuti melalui dashboard.'
                 ),
@@ -99,7 +98,7 @@ def send_new_complaint_notifications(complaint):
     send_whatsapp_notification(
         complaint,
         f'Komplain baru {complaint.code} masuk di {complaint.branch.name}. '
-        f'Tingkat: {complaint.get_severity_display()}. Segera tindak lanjuti.',
+        f'Segera tindak lanjuti.',
         to_staff=True,
     )
 
@@ -114,7 +113,6 @@ def send_new_complaint_notifications(complaint):
         f'(Kota {complaint.branch.city.name if complaint.branch.city else "-"}).\n'
         f'Jenis: {complaint.get_category_display()}'
         f'{" - " + complaint.detail_item.name if complaint.detail_item else ""}\n'
-        f'Tingkat: {complaint.get_severity_display()}\n'
         f'Batas Deadline: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n'
         f'Deskripsi: {complaint.description}'
     )
