@@ -18,11 +18,11 @@
 &middot; Periode {{ period_start|date:"d M Y" }} - {{ period_end|date:"d M Y" }}
 </p>
 
-<form method="get" class="filters" style="margin-bottom:20px;align-items:end;">
+<form method="get" class="filters dashboard-filters">
     {% if available_cities %}
     <div>
         <label for="kota-filter" style="font-weight:600;display:block;margin-bottom:4px;">Kota:</label>
-        <select name="kota" id="kota-filter" class="form-select" style="width:auto;">
+        <select name="kota" id="kota-filter" class="form-select">
             <option value="">-- Semua Kota --</option>
             {% for city in available_cities %}
                 <option value="{{ city.pk }}" {% if selected_city_id == city.pk|stringformat:"s" %}selected{% endif %}>{{ city.name }}</option>
@@ -32,11 +32,11 @@
     {% endif %}
     <div>
         <label for="mulai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Dari Tanggal:</label>
-        <input type="date" name="mulai" id="mulai-filter" class="form-control" value="{{ period_start|date:"Y-m-d" }}" style="width:auto;">
+        <input type="date" name="mulai" id="mulai-filter" class="form-control" value="{{ period_start|date:"Y-m-d" }}">
     </div>
     <div>
         <label for="selesai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Sampai Tanggal:</label>
-        <input type="date" name="selesai" id="selesai-filter" class="form-control" value="{{ period_end|date:"Y-m-d" }}" style="width:auto;">
+        <input type="date" name="selesai" id="selesai-filter" class="form-control" value="{{ period_end|date:"Y-m-d" }}">
     </div>
     <div>
         <button type="submit" class="btn btn-primary">Terapkan Filter</button>
