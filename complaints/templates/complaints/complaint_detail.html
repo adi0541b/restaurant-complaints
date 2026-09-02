@@ -4,7 +4,6 @@
 <h1>{{ complaint.code }}</h1>
 <p>
     <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
-    <span class="badge badge-{{ complaint.severity }}">{{ complaint.get_severity_display }}</span>
     {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat Deadline</span>{% endif %}
 </p>
 

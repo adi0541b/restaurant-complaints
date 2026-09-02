@@ -19,7 +19,7 @@ class ComplaintSubmissionForm(forms.ModelForm):
             'customer_name', 'customer_phone',
             'branch', 'visit_date', 'order_number',
             'customer_complaint_time', 'cs_handled_time', 'source',
-            'category', 'detail_item', 'severity', 'description', 'photo_evidence',
+            'category', 'detail_item', 'description', 'photo_evidence',
         ]
         widgets = {
             'customer_name': forms.TextInput(attrs={
@@ -37,7 +37,6 @@ class ComplaintSubmissionForm(forms.ModelForm):
             'source': forms.Select(attrs={'class': 'form-select'}),
             'category': forms.Select(attrs={'class': 'form-select', 'id': 'id_category'}),
             'detail_item': forms.Select(attrs={'class': 'form-select', 'id': 'id_detail_item'}),
-            'severity': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 5,
                 'placeholder': 'Ceritakan detail komplain Anda...'}),
@@ -48,7 +47,6 @@ class ComplaintSubmissionForm(forms.ModelForm):
             'customer_phone': 'No. HP / WhatsApp',
             'category': 'Jenis Komplain',
             'detail_item': 'Rincian Komplain',
-            'severity': 'Tingkat Keparahan (menurut Anda)',
         }
 
     def __init__(self, *args, **kwargs):
@@ -97,7 +95,7 @@ class ComplaintUpdateForm(forms.ModelForm):
     (tanpa gerbang konfirmasi Validator -- QC/Trainer mengisi berurutan
     sendiri, Validasi otomatis menyelesaikan komplain saat diisi):
 
-    - Status & Tingkat Keparahan : hanya CS (Staff Input Komplain)
+    - Status                     : hanya CS (Staff Input Komplain)
     - Akar Masalah               : hanya QC/Trainer
     - Solusi + Foto Solusi (WAJIB) : hanya QC/Trainer, MUNCUL setelah
                                     Akar Masalah terisi
@@ -113,7 +111,7 @@ class ComplaintUpdateForm(forms.ModelForm):
     class Meta:
         model = Complaint
         fields = [
-            'status', 'severity', 'resolution_notes',
+            'status', 'resolution_notes',
             'internal_notes', 'solution_photo',
             'quality_alert', 'quality_alert_photo',
             'validation_notes',
@@ -121,7 +119,6 @@ class ComplaintUpdateForm(forms.ModelForm):
         ]
         widgets = {
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'severity': forms.Select(attrs={'class': 'form-select'}),
             'resolution_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Apa akar penyebab masalah ini?'}),
@@ -162,10 +159,9 @@ class ComplaintUpdateForm(forms.ModelForm):
         # Quality Alert, Validasi) supaya tidak bisa diubah-ubah lagi.
         sudah_selesai = bool(self.instance and self.instance.status == Complaint.Status.SELESAI)
 
-        # Status & Tingkat Keparahan: hanya Staff Input Komplain
+        # Status: hanya Staff Input Komplain
         if not (profile and profile.is_input_staff):
             del self.fields['status']
-            del self.fields['severity']
 
         # Akar Masalah: hanya QC/Trainer, DAN hanya selama belum Selesai
         if not (profile and profile.can_handle_case) or sudah_selesai:
@@ -387,16 +383,20 @@ class BranchAdminForm(forms.ModelForm):
 
 
 class SiteSettingsForm(forms.ModelForm):
-    """Form mengubah nama perusahaan & logo."""
+    """Form mengubah nama perusahaan, logo, dan aturan Deadline (jam)."""
 
     class Meta:
         model = SiteSettings
-        fields = ['company_name', 'logo']
+        fields = ['company_name', 'logo', 'deadline_hours']
         widgets = {
             'company_name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Nama perusahaan/restoran Anda'}),
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'deadline_hours': forms.NumberInput(attrs={**ADMIN_TEXT_ATTRS, 'min': 1}),
         }
-        labels = {'company_name': 'Nama Perusahaan', 'logo': 'Logo Perusahaan'}
+        labels = {
+            'company_name': 'Nama Perusahaan', 'logo': 'Logo Perusahaan',
+            'deadline_hours': 'Deadline (jam) -- berlaku sama untuk semua komplain',
+        }
 
 
 class ComplaintSourceForm(forms.ModelForm):

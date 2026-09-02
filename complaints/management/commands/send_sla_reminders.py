@@ -36,7 +36,6 @@ class Command(BaseCommand):
                 f'⏰ Peringatan Deadline: Komplain {complaint.code} di {complaint.branch.name} '
                 f'akan melewati batas Deadline dalam sekitar {sisa_jam} jam.\n'
                 f'Status saat ini: {complaint.get_status_display()}\n'
-                f'Tingkat: {complaint.get_severity_display()}\n'
                 f'Batas Deadline: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M")}\n'
                 f'Segera tindak lanjuti agar tidak melewati Deadline.'
             )

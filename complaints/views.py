@@ -298,19 +298,13 @@ def dashboard(request):
     status_counts_map = {row['status']: row['total'] for row in qs.values('status').annotate(total=Count('id'))}
     status_values = [status_counts_map.get(value, 0) for value, _ in Complaint.Status.choices]
 
-    # 3) Distribusi tingkat keparahan
-    severity_labels = [label for _, label in Complaint.Severity.choices]
-    severity_counts_map = {row['severity']: row['total'] for row in qs.values('severity').annotate(total=Count('id'))}
-    severity_values = [severity_counts_map.get(value, 0) for value, _ in Complaint.Severity.choices]
-
-    # 4) Distribusi kategori (untuk grafik batang)
+    # 3) Distribusi kategori (untuk grafik batang)
     category_labels = [dict(Complaint.Category.choices).get(row['category'], row['category']) for row in by_category]
     category_values = [row['total'] for row in by_category]
 
     chart_data = {
         'trend': {'labels': trend_labels, 'values': trend_values},
         'status': {'labels': status_labels, 'values': status_values},
-        'severity': {'labels': severity_labels, 'values': severity_values},
         'category': {'labels': category_labels, 'values': category_values},
     }
 
@@ -337,14 +331,11 @@ def complaint_list(request):
     qs = _visible_complaints_for(request.user)
 
     status = request.GET.get('status')
-    severity = request.GET.get('severity')
     search = request.GET.get('q')
     only_overdue = request.GET.get('overdue')
 
     if status:
         qs = qs.filter(status=status)
-    if severity:
-        qs = qs.filter(severity=severity)
     if search:
         qs = qs.filter(
             Q(code__icontains=search) |
@@ -364,9 +355,7 @@ def complaint_list(request):
     context = {
         'page_obj': page_obj,
         'status_choices': Complaint.Status.choices,
-        'severity_choices': Complaint.Severity.choices,
         'current_status': status or '',
-        'current_severity': severity or '',
         'search': search or '',
         'only_overdue': bool(only_overdue),
     }
@@ -459,7 +448,6 @@ def export_complaints_excel(request):
 
     # Terapkan filter yang sama dengan halaman Daftar Komplain, jika ada di query string
     status = request.GET.get('status')
-    severity = request.GET.get('severity')
     search = request.GET.get('q')
     only_overdue = request.GET.get('overdue')
     kota = request.GET.get('kota')
@@ -468,8 +456,6 @@ def export_complaints_excel(request):
         qs = qs.filter(status=status)
     if kota:
         qs = qs.filter(branch__city_id=kota)
-    if severity:
-        qs = qs.filter(severity=severity)
     if search:
         qs = qs.filter(
             Q(code__icontains=search) |

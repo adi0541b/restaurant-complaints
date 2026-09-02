@@ -305,6 +305,10 @@ class Complaint(models.Model):
         'Reminder Deadline Terkirim', default=False, editable=False,
         help_text='Penanda internal supaya reminder WhatsApp 3 jam sebelum Deadline tidak terkirim berulang.',
     )
+    solution_reminder_sent = models.BooleanField(
+        'Reminder Solusi Terkirim', default=False, editable=False,
+        help_text='Penanda internal supaya reminder WhatsApp (12 jam, Solusi belum diisi) tidak terkirim berulang.',
+    )
 
     # --- Kepuasan pelanggan ------------------------------------------------
     satisfaction_rating = models.PositiveSmallIntegerField(
@@ -338,11 +342,15 @@ class Complaint(models.Model):
         return f'CMP-{next_number:05d}'
 
     # ------------------------------------------------------------------
-    # SLA per tingkat keparahan (jam), lihat settings.SLA_HOURS
+    # Deadline (jam) -- SAMA untuk semua komplain, diambil dari SiteSettings
+    # (bisa diubah Admin Pusat lewat Panel Admin), fallback 48 jam kalau
+    # baris SiteSettings belum ada.
     # ------------------------------------------------------------------
     def calculate_sla_deadline(self):
-        from django.conf import settings as dj_settings
-        hours = dj_settings.SLA_HOURS.get(self.severity, 24)
+        try:
+            hours = SiteSettings.objects.get(pk=1).deadline_hours
+        except SiteSettings.DoesNotExist:
+            hours = 48
         base_time = self.created_at or timezone.now()
         return base_time + timedelta(hours=hours)
 
@@ -420,6 +428,10 @@ class SiteSettings(models.Model):
     """Singleton: menyimpan identitas perusahaan yang bisa diubah dari panel admin."""
     company_name = models.CharField('Nama Perusahaan', max_length=150, default='Rasa Nusantara')
     logo = models.ImageField('Logo Perusahaan', upload_to='site/', blank=True, null=True)
+
+    # --- Aturan Deadline (jam), berlaku SAMA untuk semua komplain ---
+    deadline_hours = models.PositiveIntegerField('Deadline (jam)', default=48)
+
     updated_at = models.DateTimeField('Diperbarui pada', auto_now=True)
 
     class Meta:

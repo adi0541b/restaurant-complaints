@@ -47,15 +47,9 @@
     <canvas id="trendChart" height="90"></canvas>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-    <div class="card">
-        <h2>Distribusi Status</h2>
-        <canvas id="statusChart" height="220"></canvas>
-    </div>
-    <div class="card">
-        <h2>Distribusi Tingkat Keparahan</h2>
-        <canvas id="severityChart" height="220"></canvas>
-    </div>
+<div class="card">
+    <h2>Distribusi Status</h2>
+    <canvas id="statusChart" height="220"></canvas>
 </div>
 
 <div class="card">
@@ -173,15 +167,6 @@
             data: {
                 labels: data.status.labels,
                 datasets: [{ data: data.status.values, backgroundColor: palette }]
-            },
-            options: { plugins: { legend: { position: 'bottom' } } }
-        });
-
-        new Chart(document.getElementById('severityChart'), {
-            type: 'doughnut',
-            data: {
-                labels: data.severity.labels,
-                datasets: [{ data: data.severity.values, backgroundColor: ['#B00020', '#C9A227', '#3B6E8F', '#5B8C5A'] }]
             },
             options: { plugins: { legend: { position: 'bottom' } } }
         });

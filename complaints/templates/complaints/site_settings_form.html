@@ -17,6 +17,15 @@
         {{ form.logo.label_tag }}{{ form.logo }}
         <p style="color:var(--text-muted);font-size:0.85rem;">Format gambar (PNG/JPG) direkomendasikan, ukuran tidak terlalu besar agar tampilan tetap cepat dimuat.</p>
 
+        <h3>Aturan Deadline</h3>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:-8px;">
+            Jam batas waktu penanganan (Deadline) dihitung sejak komplain dilaporkan, SAMA untuk semua komplain.
+        </p>
+        {{ form.deadline_hours.label_tag }}{{ form.deadline_hours }}
+        <p style="color:var(--text-muted);font-size:0.8rem;">
+            Catatan: perubahan ini hanya berlaku untuk komplain BARU yang dilaporkan setelah disimpan. Deadline komplain yang sudah ada tidak berubah.
+        </p>
+
         <div style="margin-top:24px;">
             <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
         </div>

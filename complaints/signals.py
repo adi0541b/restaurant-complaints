@@ -218,3 +218,17 @@ def notify_qc_trainers(complaint, message):
             # tidak ditolak karena terlalu cepat.
             time.sleep(6)
         send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> QC/Trainer {profile.user}')
+
+
+def notify_branch_pics(complaint, message):
+    """Kirim WhatsApp ke SEMUA Leader Outlet (Staff/PIC) aktif di outlet
+    komplain ini."""
+    if not complaint.branch:
+        return
+
+    pics = list(complaint.branch.staff_members.filter(is_active_pic=True).exclude(phone=''))
+
+    for index, profile in enumerate(pics):
+        if index > 0:
+            time.sleep(6)
+        send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> Leader Outlet {profile.user}')
