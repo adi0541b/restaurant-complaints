@@ -43,7 +43,8 @@ def notify_on_complaint_change(sender, instance, created, **kwargs):
         ComplaintTimelineEntry.objects.create(
             complaint=instance, old_status=old_status, new_status=instance.status,
         )
-        send_status_update_notification(instance, old_status)
+        # Catatan: pelanggan SENGAJA tidak lagi dikirimi notifikasi apa pun
+        # (email/WhatsApp) saat status komplain berubah.
 
 
 # =============================================================================
@@ -115,33 +116,6 @@ def send_new_complaint_notifications(complaint):
         f'{" - " + complaint.detail_item.name if complaint.detail_item else ""}\n'
         f'Batas Deadline: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n'
         f'Deskripsi: {complaint.description}'
-    )
-
-
-def send_status_update_notification(complaint, old_status):
-    if complaint.customer_email:
-        try:
-            send_mail(
-                subject=f'Update Status Komplain {complaint.code}',
-                message=(
-                    f'Halo {complaint.customer_name},\n\n'
-                    f'Status komplain Anda ({complaint.code}) telah diperbarui menjadi: '
-                    f'{complaint.get_status_display()}.\n\n'
-                    + (f'Catatan: {complaint.resolution_notes}\n\n' if complaint.resolution_notes else '')
-                    + 'Cek status lengkap kapan saja di halaman "Cek Status Komplain".\n\n'
-                    'Salam,\nTim Layanan Pelanggan'
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[complaint.customer_email],
-                fail_silently=True,
-            )
-        except Exception:
-            logger.exception('Gagal mengirim email update status untuk %s', complaint.code)
-
-    send_whatsapp_notification(
-        complaint,
-        f'Status komplain {complaint.code} Anda kini: {complaint.get_status_display()}.',
-        to_staff=False,
     )
 
 
