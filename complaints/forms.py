@@ -94,18 +94,18 @@ class SatisfactionRatingForm(forms.ModelForm):
 class ComplaintUpdateForm(forms.ModelForm):
     """Form memperbarui penanganan komplain. Field yang muncul & bisa diedit
     tergantung PERAN user (profile) dan SEJAUH MANA data sudah terisi
-    (visibilitas bertahap, 2 gerbang konfirmasi Validator):
+    (tanpa gerbang konfirmasi Validator -- QC/Trainer mengisi berurutan
+    sendiri, Validasi otomatis menyelesaikan komplain saat diisi):
 
     - Status & Tingkat Keparahan : hanya CS (Staff Input Komplain)
     - Akar Masalah               : hanya QC/Trainer
-    - Solusi                     : hanya QC/Trainer, MUNCUL setelah
+    - Solusi + Foto Solusi (WAJIB) : hanya QC/Trainer, MUNCUL setelah
                                     Akar Masalah terisi
-    - [Gerbang 1] Solusi Dikonfirmasi Validator : hanya Validator, MUNCUL
-                                    setelah Solusi terisi
-    - Validasi (teks)            : hanya QC/Trainer, MUNCUL setelah
-                                    Gerbang 1 dicentang Validator
-    - [Gerbang 2] Dikonfirmasi Validator : hanya Validator, MUNCUL setelah
-                                    Validasi (teks) terisi -> status Selesai
+    - Quality Alert + Foto Quality Alert (WAJIB) : hanya QC/Trainer, MUNCUL
+                                    setelah Solusi + Foto Solusi terisi
+    - Validasi (teks)            : hanya QC/Trainer, MUNCUL setelah SEMUA
+                                    kolom di atas terisi lengkap -> saat
+                                    diisi & disimpan, status langsung Selesai
     - Tanggapan MA                : hanya Manager Area, kapan saja
     - Tindak Lanjut LO            : hanya Leader Outlet, kapan saja
     """
@@ -114,7 +114,9 @@ class ComplaintUpdateForm(forms.ModelForm):
         model = Complaint
         fields = [
             'status', 'severity', 'resolution_notes',
-            'internal_notes', 'solution_photo', 'solution_confirmed', 'validation_notes', 'validated',
+            'internal_notes', 'solution_photo',
+            'quality_alert', 'quality_alert_photo',
+            'validation_notes',
             'manager_response', 'lo_followup',
         ]
         widgets = {
@@ -127,11 +129,13 @@ class ComplaintUpdateForm(forms.ModelForm):
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Solusi/tindakan yang diberikan'}),
             'solution_photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'solution_confirmed': forms.CheckboxInput(),
+            'quality_alert': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Penjelasan Quality Alert'}),
+            'quality_alert_photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'validation_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
-                'placeholder': 'Catatan validasi (bukti/verifikasi bahwa solusi sudah diterapkan)'}),
-            'validated': forms.CheckboxInput(),
+                'placeholder': 'Catatan validasi akhir'}),
             'manager_response': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3,
                 'placeholder': 'Masukan/tanggapan Anda terkait komplain ini'}),
@@ -142,10 +146,10 @@ class ComplaintUpdateForm(forms.ModelForm):
         labels = {
             'resolution_notes': 'Akar Masalah',
             'internal_notes': 'Solusi',
-            'solution_photo': 'Foto Solusi (opsional)',
-            'solution_confirmed': 'Centang: Solusi sudah benar (mengizinkan Staff mengisi Validasi)',
+            'solution_photo': 'Foto Solusi',
+            'quality_alert': 'Quality Alert',
+            'quality_alert_photo': 'Foto Quality Alert',
             'validation_notes': 'Validasi',
-            'validated': 'Centang: Validasi sudah benar (menyelesaikan komplain)',
             'manager_response': 'Tanggapan MA',
             'lo_followup': 'Tindak Lanjut LO',
         }
@@ -154,58 +158,66 @@ class ComplaintUpdateForm(forms.ModelForm):
         profile = kwargs.pop('profile', None)
         super().__init__(*args, **kwargs)
 
-        sudah_dikonfirmasi = bool(self.instance and self.instance.validated)
+        # "Selesai" mengunci semua field QC/Trainer (Akar Masalah, Solusi,
+        # Quality Alert, Validasi) supaya tidak bisa diubah-ubah lagi.
+        sudah_selesai = bool(self.instance and self.instance.status == Complaint.Status.SELESAI)
 
         # Status & Tingkat Keparahan: hanya Staff Input Komplain
         if not (profile and profile.is_input_staff):
             del self.fields['status']
             del self.fields['severity']
 
-        # Akar Masalah: hanya QC/Trainer, DAN hanya selama belum dikonfirmasi akhir
-        if not (profile and profile.can_handle_case) or sudah_dikonfirmasi:
+        # Akar Masalah: hanya QC/Trainer, DAN hanya selama belum Selesai
+        if not (profile and profile.can_handle_case) or sudah_selesai:
             if 'resolution_notes' in self.fields:
                 del self.fields['resolution_notes']
 
-        # Solusi: hanya QC/Trainer, muncul setelah Akar Masalah terisi,
-        # DAN hanya selama belum dikonfirmasi akhir
+        # Solusi + Foto Solusi (WAJIB): hanya QC/Trainer, muncul setelah
+        # Akar Masalah terisi, DAN hanya selama belum Selesai
         akar_masalah_sudah_terisi = bool(self.instance and self.instance.resolution_notes)
         if 'internal_notes' in self.fields:
-            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
+            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_selesai:
                 del self.fields['internal_notes']
-
-        # Foto Solusi (opsional): sama seperti Solusi (teks) -- muncul & bisa
-        # diedit bersamaan, tidak wajib diisi.
+            else:
+                self.fields['internal_notes'].required = True
         if 'solution_photo' in self.fields:
-            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_dikonfirmasi:
+            if not (profile and profile.can_handle_case) or not akar_masalah_sudah_terisi or sudah_selesai:
                 del self.fields['solution_photo']
+            else:
+                self.fields['solution_photo'].required = not bool(
+                    self.instance and self.instance.solution_photo
+                )
 
-        # [Gerbang 1] Solusi Dikonfirmasi Validator: hanya Validator,
-        # muncul setelah Solusi terisi
-        solusi_sudah_terisi = bool(self.instance and self.instance.internal_notes)
-        if 'solution_confirmed' in self.fields:
-            if not (profile and profile.is_validator) or not solusi_sudah_terisi:
-                del self.fields['solution_confirmed']
-            elif self.instance.solution_confirmed:
-                self.fields['solution_confirmed'].disabled = True
+        # Quality Alert + Foto Quality Alert (WAJIB): hanya QC/Trainer, muncul
+        # setelah Solusi + Foto Solusi lengkap terisi, DAN belum Selesai
+        solusi_lengkap = bool(
+            self.instance and self.instance.internal_notes and self.instance.solution_photo
+        )
+        if 'quality_alert' in self.fields:
+            if not (profile and profile.can_handle_case) or not solusi_lengkap or sudah_selesai:
+                del self.fields['quality_alert']
+            else:
+                self.fields['quality_alert'].required = True
+        if 'quality_alert_photo' in self.fields:
+            if not (profile and profile.can_handle_case) or not solusi_lengkap or sudah_selesai:
+                del self.fields['quality_alert_photo']
+            else:
+                self.fields['quality_alert_photo'].required = not bool(
+                    self.instance and self.instance.quality_alert_photo
+                )
 
-        # Validasi (teks): hanya QC/Trainer, muncul setelah Gerbang 1
-        # dicentang Validator, DAN hanya selama belum dikonfirmasi akhir
-        gerbang1_sudah_dicentang = bool(self.instance and self.instance.solution_confirmed)
+        # Validasi (teks): hanya QC/Trainer, muncul setelah SEMUA kolom di
+        # atas (Akar Masalah, Solusi+Foto, Quality Alert+Foto) lengkap terisi
+        semua_lengkap = bool(
+            self.instance and self.instance.resolution_notes
+            and self.instance.internal_notes and self.instance.solution_photo
+            and self.instance.quality_alert and self.instance.quality_alert_photo
+        )
         if 'validation_notes' in self.fields:
-            if not (profile and profile.can_handle_case) or not gerbang1_sudah_dicentang or sudah_dikonfirmasi:
+            if not (profile and profile.can_handle_case) or not semua_lengkap or sudah_selesai:
                 del self.fields['validation_notes']
-
-        # [Gerbang 2] Dikonfirmasi Validator: hanya Validator, muncul setelah
-        # Validasi (teks) terisi
-        validasi_teks_sudah_terisi = bool(self.instance and self.instance.validation_notes)
-        if 'validated' in self.fields:
-            if not (profile and profile.is_validator) or not validasi_teks_sudah_terisi:
-                del self.fields['validated']
-            elif sudah_dikonfirmasi:
-                self.fields['validated'].disabled = True
-            elif self.instance.validated:
-                # Sudah pernah divalidasi -> kunci checkbox (tidak bisa dibatalkan lewat form)
-                self.fields['validated'].disabled = True
+            else:
+                self.fields['validation_notes'].required = True
 
         # Tanggapan MA: hanya Manager Area, bisa diisi/diubah KAPAN SAJA
         # (tidak terikat tahapan alur Akar Masalah/Solusi/Validasi).

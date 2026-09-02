@@ -85,7 +85,7 @@ def send_new_complaint_notifications(complaint):
                     f'Kode: {complaint.code}\n'
                     f'Kategori: {complaint.get_category_display()}\n'
                     f'Tingkat: {complaint.get_severity_display()}\n'
-                    f'Batas SLA: {complaint.sla_deadline}\n\n'
+                    f'Batas Deadline: {complaint.sla_deadline}\n\n'
                     f'Deskripsi: {complaint.description}\n\n'
                     f'Segera tindak lanjuti melalui dashboard.'
                 ),
@@ -115,7 +115,7 @@ def send_new_complaint_notifications(complaint):
         f'Jenis: {complaint.get_category_display()}'
         f'{" - " + complaint.detail_item.name if complaint.detail_item else ""}\n'
         f'Tingkat: {complaint.get_severity_display()}\n'
-        f'Batas SLA: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n'
+        f'Batas Deadline: {timezone.localtime(complaint.sla_deadline).strftime("%d-%m-%Y %H:%M") if complaint.sla_deadline else "-"}\n'
         f'Deskripsi: {complaint.description}'
     )
 

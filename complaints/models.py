@@ -258,34 +258,27 @@ class Complaint(models.Model):
         on_delete=models.SET_NULL,
     )
     resolution_notes = models.TextField('Akar Masalah', blank=True)
+    resolution_notes_filled_at = models.DateTimeField('Akar Masalah diisi pada', null=True, blank=True)
+
     internal_notes = models.TextField('Solusi', blank=True)
+    internal_notes_filled_at = models.DateTimeField('Solusi diisi pada', null=True, blank=True)
     solution_photo = models.ImageField(
         'Foto Solusi', upload_to='solution_photos/%Y/%m/', null=True, blank=True,
-        help_text='Opsional. Foto bukti/pendukung solusi yang diberikan.',
+        help_text='Wajib. Foto bukti/pendukung solusi yang diberikan.',
     )
 
-    # --- Gerbang 1: Validator mengonfirmasi Solusi, baru Staff bisa isi Validasi ---
-    solution_confirmed = models.BooleanField('Solusi Dikonfirmasi Validator', default=False)
-    solution_confirmed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name='Solusi dikonfirmasi oleh',
-        related_name='complaints_solution_confirmed', null=True, blank=True,
-        on_delete=models.SET_NULL,
+    quality_alert = models.TextField('Quality Alert', blank=True)
+    quality_alert_filled_at = models.DateTimeField('Quality Alert diisi pada', null=True, blank=True)
+    quality_alert_photo = models.ImageField(
+        'Foto Quality Alert', upload_to='quality_alert_photos/%Y/%m/', null=True, blank=True,
+        help_text='Wajib. Foto bukti terkait Quality Alert.',
     )
-    solution_confirmed_at = models.DateTimeField('Solusi dikonfirmasi pada', null=True, blank=True)
 
     validation_notes = models.TextField(
         'Validasi', blank=True,
-        help_text='Diisi Staff/PIC Outlet setelah Solusi dikonfirmasi Validator.',
+        help_text='Diisi QC/Trainer setelah Akar Masalah, Solusi, dan Quality Alert lengkap terisi.',
     )
-
-    # --- Gerbang 2: Konfirmasi akhir (oleh Validator) -> status Selesai ------
-    validated = models.BooleanField('Dikonfirmasi Validator', default=False)
-    validated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name='Divalidasi oleh',
-        related_name='complaints_validated', null=True, blank=True,
-        on_delete=models.SET_NULL,
-    )
-    validated_at = models.DateTimeField('Divalidasi pada', null=True, blank=True)
+    validation_notes_filled_at = models.DateTimeField('Validasi diisi pada', null=True, blank=True)
 
     # --- Tanggapan Manager Area (bisa diisi kapan saja, tidak terikat alur) ---
     manager_response = models.TextField('Tanggapan MA', blank=True)
@@ -306,11 +299,11 @@ class Complaint(models.Model):
     lo_followup_at = models.DateTimeField('Tindak lanjut diisi pada', null=True, blank=True)
 
     # --- SLA ------------------------------------------------------------------
-    sla_deadline = models.DateTimeField('Batas Waktu SLA', null=True, blank=True, editable=False)
+    sla_deadline = models.DateTimeField('Batas Waktu Deadline', null=True, blank=True, editable=False)
     resolved_at = models.DateTimeField('Selesai pada', null=True, blank=True)
     sla_reminder_sent = models.BooleanField(
-        'Reminder SLA Terkirim', default=False, editable=False,
-        help_text='Penanda internal supaya reminder WhatsApp 3 jam sebelum SLA tidak terkirim berulang.',
+        'Reminder Deadline Terkirim', default=False, editable=False,
+        help_text='Penanda internal supaya reminder WhatsApp 3 jam sebelum Deadline tidak terkirim berulang.',
     )
 
     # --- Kepuasan pelanggan ------------------------------------------------

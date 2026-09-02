@@ -381,48 +381,39 @@ def complaint_detail(request, pk):
     if request.method == 'POST':
         # Simpan kondisi SEBELUM form memodifikasi instance, untuk mendeteksi
         # transisi "baru pertama kali terisi" secara akurat.
-        was_resolution_filled = bool(complaint.resolution_notes)
         was_internal_filled = bool(complaint.internal_notes)
-        was_solution_confirmed = complaint.solution_confirmed
-        was_validated = complaint.validated
+        was_validation_filled = bool(complaint.validation_notes)
 
         form = ComplaintUpdateForm(request.POST, request.FILES, instance=complaint, profile=profile)
         if form.is_valid():
             updated = form.save(commit=False)
+            now = timezone.now()
 
             # "Ditangani oleh" otomatis terisi siapapun yang menyimpan perubahan.
             if profile is not None:
                 updated.assigned_to = request.user
 
-            # Transisi status otomatis: Staff/QC-Trainer mengisi Akar Masalah -> Ditinjau
             if profile and profile.can_handle_case:
-                if updated.resolution_notes and not was_resolution_filled:
-                    updated.status = Complaint.Status.DITINJAU
-                # Staff/QC-Trainer mengisi Solusi -> Diproses
+                # Catat waktu pertama kali masing-masing tahap diisi (dipakai
+                # untuk menghitung durasi per tahap nantinya).
+                if updated.resolution_notes and not updated.resolution_notes_filled_at:
+                    updated.resolution_notes_filled_at = now
+                if updated.internal_notes and not updated.internal_notes_filled_at:
+                    updated.internal_notes_filled_at = now
+                if updated.quality_alert and not updated.quality_alert_filled_at:
+                    updated.quality_alert_filled_at = now
+                if updated.validation_notes and not updated.validation_notes_filled_at:
+                    updated.validation_notes_filled_at = now
+
+                # Solusi (+ Foto Solusi) terisi -> status "Sedang Diproses"
                 if updated.internal_notes and not was_internal_filled:
                     updated.status = Complaint.Status.DIPROSES
 
-            # [Gerbang 1] Validator mencentang "Solusi sudah benar" -> TIDAK
-            # mengubah status, hanya membuka akses Staff untuk mengisi Validasi.
-            if profile and profile.is_validator:
-                if updated.solution_confirmed and not was_solution_confirmed:
-                    updated.solution_confirmed_by = request.user
-                    updated.solution_confirmed_at = timezone.now()
-
-            # [Gerbang 2] Validator mencentang "Validasi sudah benar" -> Selesai
-            if profile and profile.is_validator:
-                if updated.validated and not was_validated:
+                # Validasi terisi -> komplain otomatis "Selesai" (tanpa perlu
+                # konfirmasi Validator lagi)
+                if updated.validation_notes and not was_validation_filled:
                     updated.status = Complaint.Status.SELESAI
-                    updated.resolved_at = timezone.now()
-                    updated.validated_by = request.user
-                    updated.validated_at = timezone.now()
-
-            # Pengaman: status HARUS "Selesai" setiap kali validated=True tersimpan,
-            # supaya tidak pernah "nyangkut" di status lain karena urutan aksi yang tidak biasa.
-            if updated.validated:
-                updated.status = Complaint.Status.SELESAI
-                if not updated.resolved_at:
-                    updated.resolved_at = timezone.now()
+                    updated.resolved_at = now
 
             # Tanggapan MA: catat siapa & kapan terakhir mengisi/mengubahnya.
             if profile and profile.is_manager and updated.manager_response:
@@ -441,7 +432,7 @@ def complaint_detail(request, pk):
         form = ComplaintUpdateForm(instance=complaint, profile=profile)
 
     show_penanganan_card = bool(form.fields) or (
-        profile and complaint.internal_notes and (profile.is_validator or profile.can_handle_case)
+        profile and complaint.internal_notes and profile.can_handle_case
     )
 
     context = {
@@ -500,8 +491,12 @@ def export_complaints_excel(request):
         'Tanggal Kunjungan', 'No. Pesanan', 'Sumber Komplain',
         'Jam Komplain Masuk', 'Jam Ditangani CS',
         'Jenis Komplain', 'Rincian Komplain', 'Tingkat Keparahan',
-        'Status', 'Deskripsi', 'Ditangani Oleh', 'Akar Masalah',
-        'Dilaporkan Pada', 'Batas SLA', 'Lewat SLA?', 'Selesai Pada',
+        'Status', 'Deskripsi', 'Ditangani Oleh',
+        'Akar Masalah', 'Akar Masalah Diisi Pada',
+        'Solusi', 'Solusi Diisi Pada',
+        'Quality Alert', 'Quality Alert Diisi Pada',
+        'Validasi', 'Validasi Diisi Pada',
+        'Dilaporkan Pada', 'Batas Deadline', 'Lewat Deadline?', 'Selesai Pada',
         'Rating Kepuasan', 'Masukan Tambahan',
     ]
 
@@ -514,6 +509,9 @@ def export_complaints_excel(request):
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
+    def _fmt(dt):
+        return timezone.localtime(dt).strftime('%d-%m-%Y %H:%M') if dt else ''
+
     for row_idx, c in enumerate(qs, start=2):
         ws.cell(row=row_idx, column=1, value=c.code)
         ws.cell(row=row_idx, column=2, value=c.customer_name)
@@ -524,10 +522,8 @@ def export_complaints_excel(request):
         ws.cell(row=row_idx, column=7, value=c.visit_date.strftime('%d-%m-%Y') if c.visit_date else '')
         ws.cell(row=row_idx, column=8, value=c.order_number)
         ws.cell(row=row_idx, column=9, value=str(c.source) if c.source else '')
-        ws.cell(row=row_idx, column=10,
-                value=timezone.localtime(c.customer_complaint_time).strftime('%d-%m-%Y %H:%M') if c.customer_complaint_time else '')
-        ws.cell(row=row_idx, column=11,
-                value=timezone.localtime(c.cs_handled_time).strftime('%d-%m-%Y %H:%M') if c.cs_handled_time else '')
+        ws.cell(row=row_idx, column=10, value=_fmt(c.customer_complaint_time))
+        ws.cell(row=row_idx, column=11, value=_fmt(c.cs_handled_time))
         ws.cell(row=row_idx, column=12, value=c.get_category_display())
         ws.cell(row=row_idx, column=13, value=c.detail_item.name if c.detail_item else '')
         ws.cell(row=row_idx, column=14, value=c.get_severity_display())
@@ -535,18 +531,23 @@ def export_complaints_excel(request):
         ws.cell(row=row_idx, column=16, value=c.description)
         ws.cell(row=row_idx, column=17, value=str(c.assigned_to) if c.assigned_to else '')
         ws.cell(row=row_idx, column=18, value=c.resolution_notes)
-        ws.cell(row=row_idx, column=19,
-                value=timezone.localtime(c.created_at).strftime('%d-%m-%Y %H:%M') if c.created_at else '')
-        ws.cell(row=row_idx, column=20,
-                value=timezone.localtime(c.sla_deadline).strftime('%d-%m-%Y %H:%M') if c.sla_deadline else '')
-        ws.cell(row=row_idx, column=21, value='Ya' if c.is_overdue else 'Tidak')
-        ws.cell(row=row_idx, column=22,
-                value=timezone.localtime(c.resolved_at).strftime('%d-%m-%Y %H:%M') if c.resolved_at else '')
-        ws.cell(row=row_idx, column=23, value=c.satisfaction_rating)
-        ws.cell(row=row_idx, column=24, value=c.satisfaction_feedback)
+        ws.cell(row=row_idx, column=19, value=_fmt(c.resolution_notes_filled_at))
+        ws.cell(row=row_idx, column=20, value=c.internal_notes)
+        ws.cell(row=row_idx, column=21, value=_fmt(c.internal_notes_filled_at))
+        ws.cell(row=row_idx, column=22, value=c.quality_alert)
+        ws.cell(row=row_idx, column=23, value=_fmt(c.quality_alert_filled_at))
+        ws.cell(row=row_idx, column=24, value=c.validation_notes)
+        ws.cell(row=row_idx, column=25, value=_fmt(c.validation_notes_filled_at))
+        ws.cell(row=row_idx, column=26, value=_fmt(c.created_at))
+        ws.cell(row=row_idx, column=27, value=_fmt(c.sla_deadline))
+        ws.cell(row=row_idx, column=28, value='Ya' if c.is_overdue else 'Tidak')
+        ws.cell(row=row_idx, column=29, value=_fmt(c.resolved_at))
+        ws.cell(row=row_idx, column=30, value=c.satisfaction_rating)
+        ws.cell(row=row_idx, column=31, value=c.satisfaction_feedback)
 
     # Lebar kolom otomatis (sederhana, dibatasi agar tidak terlalu lebar)
-    widths = [12, 20, 15, 22, 22, 10, 16, 16, 16, 18, 18, 16, 20, 16, 14, 40, 18, 35, 18, 18, 12, 18, 14, 35]
+    widths = [12, 20, 15, 22, 22, 10, 16, 16, 16, 18, 18, 16, 20, 16, 14, 40, 18,
+              35, 18, 35, 18, 30, 18, 30, 18, 18, 18, 12, 18, 14, 35]
     for col_idx, width in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
 

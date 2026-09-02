@@ -34,7 +34,7 @@
     <div class="stat-box"><div class="num">{{ stats.baru }}</div><div class="label">Baru</div></div>
     <div class="stat-box"><div class="num">{{ stats.diproses }}</div><div class="label">Sedang Ditangani</div></div>
     <div class="stat-box"><div class="num">{{ stats.selesai }}</div><div class="label">Selesai</div></div>
-    <div class="stat-box"><div class="num" style="color:var(--danger);">{{ stats.overdue }}</div><div class="label">Lewat SLA</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--danger);">{{ stats.overdue }}</div><div class="label">Lewat Deadline</div></div>
     <div class="stat-box"><div class="num">{{ stats.avg_rating|floatformat:1|default:"-" }}</div><div class="label">Rata-rata Rating</div></div>
 </div>
 
@@ -67,7 +67,7 @@
     <h2>Komplain Terbaru</h2>
     <table>
         <thead>
-            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Outlet</th><th>Kategori</th><th>Status</th><th>SLA</th></tr>
+            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Outlet</th><th>Kategori</th><th>Status</th><th>Deadline</th></tr>
         </thead>
         <tbody>
         {% for c in recent_complaints %}
@@ -94,12 +94,12 @@
         <h2 style="margin:0;">Ranking Kota</h2>
         <div>
             <button type="button" id="city-rank-by-total-btn" class="btn btn-primary" onclick="setCityRankMetric('total')" style="padding:8px 16px;font-size:0.85rem;">Jumlah Komplain</button>
-            <button type="button" id="city-rank-by-overdue-btn" class="btn btn-outline" onclick="setCityRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat SLA</button>
+            <button type="button" id="city-rank-by-overdue-btn" class="btn btn-outline" onclick="setCityRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat Deadline</button>
         </div>
     </div>
     <canvas id="cityRankingChart" height="180" style="margin-top:16px;"></canvas>
     <table style="margin-top:16px;">
-        <thead><tr><th style="width:60px;">#</th><th>Kota</th><th>Jumlah Komplain</th><th>Lewat SLA</th></tr></thead>
+        <thead><tr><th style="width:60px;">#</th><th>Kota</th><th>Jumlah Komplain</th><th>Lewat Deadline</th></tr></thead>
         <tbody id="city-ranking-table-body"></tbody>
     </table>
 </div>
@@ -111,12 +111,12 @@
         <h2 style="margin:0;">Ranking Outlet</h2>
         <div>
             <button type="button" id="rank-by-total-btn" class="btn btn-primary" onclick="setRankMetric('total')" style="padding:8px 16px;font-size:0.85rem;">Jumlah Komplain</button>
-            <button type="button" id="rank-by-overdue-btn" class="btn btn-outline" onclick="setRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat SLA</button>
+            <button type="button" id="rank-by-overdue-btn" class="btn btn-outline" onclick="setRankMetric('overdue')" style="padding:8px 16px;font-size:0.85rem;">Lewat Deadline</button>
         </div>
     </div>
     <canvas id="rankingChart" height="180" style="margin-top:16px;"></canvas>
     <table style="margin-top:16px;">
-        <thead><tr><th style="width:60px;">#</th><th>Outlet</th><th>Jumlah Komplain</th><th>Lewat SLA</th></tr></thead>
+        <thead><tr><th style="width:60px;">#</th><th>Outlet</th><th>Jumlah Komplain</th><th>Lewat Deadline</th></tr></thead>
         <tbody id="ranking-table-body"></tbody>
     </table>
 </div>
@@ -204,7 +204,7 @@
 
     // ------------------------------------------------------------------
     // Ranking Outlet & Ranking Kota: tabel + grafik, bisa toggle antara
-    // Jumlah Komplain dan Lewat SLA, diurutkan dari tertinggi ke terendah.
+    // Jumlah Komplain dan Lewat Deadline, diurutkan dari tertinggi ke terendah.
     // ------------------------------------------------------------------
     let rankingChartInstance = null;
     let cityRankingChartInstance = null;
@@ -228,7 +228,7 @@
         const chartLabels = top.map(r => r.name);
         const chartValues = top.map(r => r[metric]);
         const chartColor = metric === 'overdue' ? '#B00020' : '#7A1F1F';
-        const chartLabel = metric === 'overdue' ? 'Lewat SLA' : 'Jumlah Komplain';
+        const chartLabel = metric === 'overdue' ? 'Lewat Deadline' : 'Jumlah Komplain';
 
         if (existingChart) existingChart.destroy();
         return new Chart(document.getElementById(canvasId), {

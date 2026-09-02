@@ -20,14 +20,14 @@
     <p>
         <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
         <span class="badge badge-{{ complaint.severity }}">{{ complaint.get_severity_display }}</span>
-        {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat SLA</span>{% endif %}
+        {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat Deadline</span>{% endif %}
     </p>
     <table>
         <tr><th>Outlet</th><td>{{ complaint.branch.name }}</td></tr>
         <tr><th>Kategori</th><td>{{ complaint.get_category_display }}</td></tr>
         <tr><th>Deskripsi</th><td>{{ complaint.description }}</td></tr>
         <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
-        <tr><th>Batas SLA</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Batas Deadline</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}</td></tr>
         {% if complaint.resolution_notes %}
         <tr><th>Catatan Penyelesaian</th><td>{{ complaint.resolution_notes }}</td></tr>
         {% endif %}

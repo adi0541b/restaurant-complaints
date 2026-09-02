@@ -5,7 +5,7 @@
 <p>
     <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
     <span class="badge badge-{{ complaint.severity }}">{{ complaint.get_severity_display }}</span>
-    {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat SLA</span>{% endif %}
+    {% if complaint.is_overdue %}<span class="badge badge-overdue">Lewat Deadline</span>{% endif %}
 </p>
 
 <div class="card" style="border-top-color:var(--maroon);background:#FBF3E3;">
@@ -43,38 +43,40 @@
         <tr><th>Foto Bukti</th><td><img src="{{ complaint.photo_evidence.url }}" style="max-width:280px;border-radius:8px;"></td></tr>
         {% endif %}
         <tr><th>Dilaporkan</th><td>{{ complaint.created_at|date:"d M Y, H:i" }}</td></tr>
-        <tr><th>Batas SLA</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}
+        <tr><th>Batas Deadline</th><td>{{ complaint.sla_deadline|date:"d M Y, H:i" }}
             <div class="progress-bar-bg"><div class="progress-bar-fill {% if complaint.is_overdue %}overdue{% endif %}" style="width:{{ complaint.sla_progress_percent }}%;"></div></div>
         </td></tr>
         <tr><th>Ditangani oleh</th><td>{% if complaint.assigned_to %}{{ complaint.assigned_to.get_full_name|default:complaint.assigned_to.username }}{% else %}-{% endif %}</td></tr>
         {% if complaint.resolution_notes %}
-        <tr><th>Akar Masalah</th><td>{{ complaint.resolution_notes }}</td></tr>
+        <tr><th>Akar Masalah</th><td>
+            {{ complaint.resolution_notes }}
+            {% if complaint.resolution_notes_filled_at %}<div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">Diisi pada {{ complaint.resolution_notes_filled_at|date:"d M Y, H:i" }}</div>{% endif %}
+        </td></tr>
         {% endif %}
         {% if complaint.internal_notes %}
-        <tr><th>Solusi</th><td>{{ complaint.internal_notes }}</td></tr>
+        <tr><th>Solusi</th><td>
+            {{ complaint.internal_notes }}
+            {% if complaint.internal_notes_filled_at %}<div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">Diisi pada {{ complaint.internal_notes_filled_at|date:"d M Y, H:i" }}</div>{% endif %}
+        </td></tr>
         {% endif %}
         {% if complaint.solution_photo %}
         <tr><th>Foto Solusi</th><td><a href="{{ complaint.solution_photo.url }}" target="_blank"><img src="{{ complaint.solution_photo.url }}" style="max-width:280px;border-radius:8px;"></a></td></tr>
         {% endif %}
-        {% if complaint.internal_notes %}
-        <tr><th>Konfirmasi Solusi</th><td>
-            {% if complaint.solution_confirmed %}
-                ✅ Sudah dikonfirmasi oleh {% if complaint.solution_confirmed_by %}{{ complaint.solution_confirmed_by.get_full_name|default:complaint.solution_confirmed_by.username }}{% else %}-{% endif %} pada {{ complaint.solution_confirmed_at|date:"d M Y, H:i" }}
-            {% else %}
-                Belum dikonfirmasi
-            {% endif %}
+        {% if complaint.quality_alert %}
+        <tr><th>Quality Alert</th><td>
+            {{ complaint.quality_alert }}
+            {% if complaint.quality_alert_filled_at %}<div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">Diisi pada {{ complaint.quality_alert_filled_at|date:"d M Y, H:i" }}</div>{% endif %}
         </td></tr>
+        {% endif %}
+        {% if complaint.quality_alert_photo %}
+        <tr><th>Foto Quality Alert</th><td><a href="{{ complaint.quality_alert_photo.url }}" target="_blank"><img src="{{ complaint.quality_alert_photo.url }}" style="max-width:280px;border-radius:8px;"></a></td></tr>
         {% endif %}
         {% if complaint.validation_notes %}
-        <tr><th>Validasi</th><td>{{ complaint.validation_notes }}</td></tr>
-        {% endif %}
-        <tr><th>Konfirmasi Validator</th><td>
-            {% if complaint.validated %}
-                ✅ Sudah dikonfirmasi oleh {% if complaint.validated_by %}{{ complaint.validated_by.get_full_name|default:complaint.validated_by.username }}{% else %}-{% endif %} pada {{ complaint.validated_at|date:"d M Y, H:i" }}
-            {% else %}
-                Belum dikonfirmasi
-            {% endif %}
+        <tr><th>Validasi</th><td>
+            {{ complaint.validation_notes }}
+            {% if complaint.validation_notes_filled_at %}<div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">Diisi pada {{ complaint.validation_notes_filled_at|date:"d M Y, H:i" }}</div>{% endif %}
         </td></tr>
+        {% endif %}
         {% if complaint.manager_response %}
         <tr><th>Tanggapan MA</th><td>
             {{ complaint.manager_response }}
@@ -103,54 +105,24 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {% if request.user.staff_profile.can_handle_case and complaint.validated %}
+        {% if request.user.staff_profile.can_handle_case and complaint.status == "selesai" %}
             <div style="background:#F0EDE6;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Akar Masalah (sudah dikonfirmasi, tidak bisa diubah lagi)</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Akar Masalah (Selesai, tidak bisa diubah lagi)</div>
                 <div style="white-space:pre-wrap;">{{ complaint.resolution_notes }}</div>
             </div>
             <div style="background:#F0EDE6;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Solusi (sudah dikonfirmasi, tidak bisa diubah lagi)</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Solusi (Selesai, tidak bisa diubah lagi)</div>
                 <div style="white-space:pre-wrap;">{{ complaint.internal_notes }}</div>
                 {% if complaint.solution_photo %}<img src="{{ complaint.solution_photo.url }}" style="max-width:220px;border-radius:8px;margin-top:8px;">{% endif %}
             </div>
             <div style="background:#F0EDE6;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Validasi (sudah dikonfirmasi, tidak bisa diubah lagi)</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Quality Alert (Selesai, tidak bisa diubah lagi)</div>
+                <div style="white-space:pre-wrap;">{{ complaint.quality_alert }}</div>
+                {% if complaint.quality_alert_photo %}<img src="{{ complaint.quality_alert_photo.url }}" style="max-width:220px;border-radius:8px;margin-top:8px;">{% endif %}
+            </div>
+            <div style="background:#F0EDE6;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">🔒 Validasi (Selesai, tidak bisa diubah lagi)</div>
                 <div style="white-space:pre-wrap;">{{ complaint.validation_notes }}</div>
-            </div>
-        {% endif %}
-
-        {% if request.user.staff_profile.is_validator and complaint.internal_notes %}
-            <div style="background:#FBF3E3;border-radius:8px;padding:12px 16px;margin-bottom:12px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">Solusi (diisi Staff Outlet) — hanya untuk dibaca</div>
-                <div style="white-space:pre-wrap;">{{ complaint.internal_notes }}</div>
-                {% if complaint.solution_photo %}<img src="{{ complaint.solution_photo.url }}" style="max-width:220px;border-radius:8px;margin-top:8px;">{% endif %}
-            </div>
-        {% endif %}
-
-        {% if request.user.staff_profile.is_validator and complaint.validation_notes %}
-            <div style="background:#FBF3E3;border-radius:8px;padding:12px 16px;margin-bottom:20px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">Validasi (diisi Staff Outlet) — hanya untuk dibaca</div>
-                <div style="white-space:pre-wrap;">{{ complaint.validation_notes }}</div>
-            </div>
-        {% endif %}
-
-        {% if request.user.staff_profile.can_handle_case and complaint.internal_notes and not complaint.solution_confirmed %}
-            <div style="background:#FBF3E3;border-radius:8px;padding:12px 16px;margin-bottom:20px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">Status Konfirmasi Solusi — hanya untuk dibaca</div>
-                <div style="color:var(--text-muted);">Menunggu konfirmasi Solusi dari Validator. Kolom "Validasi" akan muncul setelah dikonfirmasi.</div>
-            </div>
-        {% endif %}
-
-        {% if request.user.staff_profile.can_handle_case and complaint.solution_confirmed and complaint.validation_notes %}
-            <div style="background:#FBF3E3;border-radius:8px;padding:12px 16px;margin-bottom:20px;">
-                <div style="color:var(--text-muted);font-size:0.8rem;margin-bottom:4px;">Status Konfirmasi Validator — hanya untuk dibaca</div>
-                {% if complaint.validated %}
-                    <div style="color:var(--success);font-weight:600;">
-                        ✅ Sudah dikonfirmasi{% if complaint.validated_by %} oleh {{ complaint.validated_by.get_full_name|default:complaint.validated_by.username }}{% endif %}{% if complaint.validated_at %} pada {{ complaint.validated_at|date:"d M Y, H:i" }}{% endif %}
-                    </div>
-                {% else %}
-                    <div style="color:var(--text-muted);">Menunggu konfirmasi akhir dari Validator. Status akan otomatis berubah menjadi "Selesai" setelah dikonfirmasi.</div>
-                {% endif %}
             </div>
         {% endif %}
 

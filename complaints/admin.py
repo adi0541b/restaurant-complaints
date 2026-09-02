@@ -82,10 +82,14 @@ class ComplaintAdmin(admin.ModelAdmin):
             'fields': ('category', 'detail_item', 'description', 'photo_evidence'),
         }),
         ('Penanganan', {
-            'fields': ('assigned_to', 'resolution_notes', 'internal_notes', 'solution_photo', 'solution_confirmed', 'validation_notes', 'sla_deadline', 'resolved_at'),
-        }),
-        ('Validasi', {
-            'fields': ('validated', 'validated_by', 'validated_at'),
+            'fields': (
+                'assigned_to',
+                'resolution_notes', 'resolution_notes_filled_at',
+                'internal_notes', 'internal_notes_filled_at', 'solution_photo',
+                'quality_alert', 'quality_alert_filled_at', 'quality_alert_photo',
+                'validation_notes', 'validation_notes_filled_at',
+                'sla_deadline', 'resolved_at',
+            ),
         }),
         ('Tanggapan MA', {
             'fields': ('manager_response', 'manager_response_by', 'manager_response_at'),
@@ -118,7 +122,7 @@ class ComplaintAdmin(admin.ModelAdmin):
             colors.get(obj.status, '#888'), obj.get_status_display(),
         )
 
-    @admin.display(description='SLA', boolean=True)
+    @admin.display(description='Deadline', boolean=True)
     def overdue_flag(self, obj):
         return obj.is_overdue
 
