@@ -54,10 +54,9 @@
     function updateDateDisplay(input) {
         var display = input.nextElementSibling;
         if (!input.value) { display.textContent = ''; return; }
-        var parts = input.value.split('-'); // format asli: YYYY-MM-DD
-        display.textContent = parts[2] + '/' + parts[1] + '/' + parts[0]; // tampilkan: DD/MM/YYYY
+        var parts = input.value.split('-');
+        display.textContent = parts[2] + '/' + parts[1] + '/' + parts[0];
     }
-
     document.querySelectorAll('.date-id-format').forEach(function (input) {
         updateDateDisplay(input);
         input.addEventListener('input', function () { updateDateDisplay(input); });
@@ -72,7 +71,6 @@
     <div class="stat-box"><div class="num">{{ stats.diproses }}</div><div class="label">Sedang Ditangani</div></div>
     <div class="stat-box"><div class="num">{{ stats.selesai }}</div><div class="label">Selesai</div></div>
     <div class="stat-box"><div class="num" style="color:var(--danger);">{{ stats.overdue }}</div><div class="label">Lewat Deadline</div></div>
-    <div class="stat-box"><div class="num">{{ stats.avg_rating|floatformat:1|default:"-" }}</div><div class="label">Rata-rata Rating</div></div>
 </div>
 
 {{ chart_data|json_script:"chart-data" }}
@@ -224,10 +222,6 @@
         renderCityRankingChart('total');
     }
 
-    // ------------------------------------------------------------------
-    // Ranking Outlet & Ranking Kota: tabel + grafik, bisa toggle antara
-    // Jumlah Komplain dan Lewat Deadline, diurutkan dari tertinggi ke terendah.
-    // ------------------------------------------------------------------
     let rankingChartInstance = null;
     let cityRankingChartInstance = null;
 
@@ -291,9 +285,6 @@
         );
     }
 
-    // Coba CDN pertama (jsDelivr). Jika gagal, coba CDN kedua (cdnjs).
-    // Jika keduanya gagal (mis. tidak ada internet / diblokir firewall),
-    // tampilkan pesan yang jelas alih-alih membuat halaman error.
     loadScript(
         'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
         renderCharts,
@@ -301,7 +292,7 @@
             loadScript(
                 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
                 renderCharts,
-                renderCharts  // tetap panggil agar fallback message ditampilkan
+                renderCharts
             );
         }
     );
