@@ -32,16 +32,39 @@
     {% endif %}
     <div>
         <label for="mulai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Dari Tanggal:</label>
-        <input type="date" name="mulai" id="mulai-filter" class="form-control" value="{{ period_start|date:"Y-m-d" }}">
+        <div style="position:relative;">
+            <input type="date" name="mulai" id="mulai-filter" class="form-control date-id-format" value="{{ period_start|date:"Y-m-d" }}">
+            <span class="date-id-display" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;background:#fff;"></span>
+        </div>
     </div>
     <div>
         <label for="selesai-filter" style="font-weight:600;display:block;margin-bottom:4px;">Sampai Tanggal:</label>
-        <input type="date" name="selesai" id="selesai-filter" class="form-control" value="{{ period_end|date:"Y-m-d" }}">
+        <div style="position:relative;">
+            <input type="date" name="selesai" id="selesai-filter" class="form-control date-id-format" value="{{ period_end|date:"Y-m-d" }}">
+            <span class="date-id-display" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;background:#fff;"></span>
+        </div>
     </div>
     <div>
         <button type="submit" class="btn btn-primary">Terapkan Filter</button>
     </div>
 </form>
+
+<script>
+(function () {
+    function updateDateDisplay(input) {
+        var display = input.nextElementSibling;
+        if (!input.value) { display.textContent = ''; return; }
+        var parts = input.value.split('-'); // format asli: YYYY-MM-DD
+        display.textContent = parts[2] + '/' + parts[1] + '/' + parts[0]; // tampilkan: DD/MM/YYYY
+    }
+
+    document.querySelectorAll('.date-id-format').forEach(function (input) {
+        updateDateDisplay(input);
+        input.addEventListener('input', function () { updateDateDisplay(input); });
+        input.addEventListener('change', function () { updateDateDisplay(input); });
+    });
+})();
+</script>
 
 <div class="stats-grid">
     <div class="stat-box"><div class="num">{{ stats.total }}</div><div class="label">Total Komplain</div></div>
