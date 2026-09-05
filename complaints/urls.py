@@ -23,6 +23,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('komplain/', views.complaint_list, name='complaint_list'),
     path('komplain/export/', views.export_complaints_excel, name='export_excel'),
+    path('komplain/export-ringkasan/', views.export_summary_excel, name='export_summary_excel'),
     path('komplain/<int:pk>/', views.complaint_detail, name='complaint_detail'),
     path('komplain/<int:pk>/hapus/', views.complaint_delete, name='complaint_delete'),
 

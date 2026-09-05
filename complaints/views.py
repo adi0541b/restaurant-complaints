@@ -631,6 +631,103 @@ def export_complaints_excel(request):
 
 
 # =============================================================================
+# EXPORT RINGKASAN KE EXCEL - khusus Validator & Admin Pusat
+# Format: Dari Tanggal, Sampai Tanggal, Kota, Outlet, Komplain Produk, Komplain
+# Servis (jumlah semua status), 1 baris per outlet.
+# =============================================================================
+@login_required
+def export_summary_excel(request):
+    import openpyxl
+    from django.http import HttpResponse
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    profile = getattr(request.user, 'staff_profile', None)
+    if not (profile and (profile.is_validator or profile.is_admin_pusat)):
+        raise PermissionDenied('Hanya Validator dan Admin Pusat yang dapat mengakses laporan ringkasan ini.')
+
+    qs = _visible_complaints_for(request.user)
+
+    kota = request.GET.get('kota')
+    if kota:
+        qs = qs.filter(branch__city_id=kota)
+
+    # Periode: default siklus 26-25 (sama seperti Dashboard), bisa diganti lewat query string.
+    today = timezone.localdate()
+    if today.day >= 26:
+        default_start = today.replace(day=26)
+        if today.month == 12:
+            default_end = today.replace(year=today.year + 1, month=1, day=25)
+        else:
+            default_end = today.replace(month=today.month + 1, day=25)
+    else:
+        default_end = today.replace(day=25)
+        if today.month == 1:
+            default_start = today.replace(year=today.year - 1, month=12, day=26)
+        else:
+            default_start = today.replace(month=today.month - 1, day=26)
+
+    mulai_raw = request.GET.get('mulai')
+    selesai_raw = request.GET.get('selesai')
+    try:
+        period_start = datetime.strptime(mulai_raw, '%Y-%m-%d').date() if mulai_raw else default_start
+    except ValueError:
+        period_start = default_start
+    try:
+        period_end = datetime.strptime(selesai_raw, '%Y-%m-%d').date() if selesai_raw else default_end
+    except ValueError:
+        period_end = default_end
+
+    period_start_dt = timezone.make_aware(datetime.combine(period_start, time.min))
+    period_end_dt = timezone.make_aware(datetime.combine(period_end + timedelta(days=1), time.min))
+    qs = qs.filter(created_at__gte=period_start_dt, created_at__lt=period_end_dt)
+
+    rows = qs.values('branch__name', 'branch__city__name').annotate(
+        produk=Count('id', filter=Q(category=Complaint.Category.PRODUK)),
+        servis=Count('id', filter=Q(category=Complaint.Category.SERVIS)),
+    ).order_by('branch__city__name', 'branch__name')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Ringkasan Komplain'
+
+    headers = ['Dari Tanggal', 'Sampai Tanggal', 'Kota', 'Outlet', 'Komplain Produk', 'Komplain Servis']
+    header_fill = PatternFill(start_color='7A1F1F', end_color='7A1F1F', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    tgl_mulai = period_start.strftime('%d-%m-%Y')
+    tgl_selesai = period_end.strftime('%d-%m-%Y')
+
+    for row_idx, row in enumerate(rows, start=2):
+        ws.cell(row=row_idx, column=1, value=tgl_mulai)
+        ws.cell(row=row_idx, column=2, value=tgl_selesai)
+        ws.cell(row=row_idx, column=3, value=row['branch__city__name'] or '-')
+        ws.cell(row=row_idx, column=4, value=row['branch__name'] or '-')
+        ws.cell(row=row_idx, column=5, value=row['produk'])
+        ws.cell(row=row_idx, column=6, value=row['servis'])
+
+    widths = [16, 16, 18, 30, 18, 18]
+    for col_idx, width in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = ws.dimensions
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'ringkasan_komplain_{timezone.localdate().strftime("%Y%m%d")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+# =============================================================================
 # PANEL ADMIN PUSAT: kelola akun staff, outlet, dan identitas perusahaan
 # =============================================================================
 @admin_pusat_required

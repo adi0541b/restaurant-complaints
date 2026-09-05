@@ -3,7 +3,12 @@
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
     <h1 style="margin:0;">Dashboard Komplain</h1>
-    <a href="{% url 'complaints:export_excel' %}?mulai={{ period_start|date:"Y-m-d" }}&selesai={{ period_end|date:"Y-m-d" }}{% if selected_city_id %}&kota={{ selected_city_id }}{% endif %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        {% if request.user.staff_profile.is_validator or request.user.staff_profile.is_admin_pusat %}
+        <a href="{% url 'complaints:export_summary_excel' %}?mulai={{ period_start|date:"Y-m-d" }}&selesai={{ period_end|date:"Y-m-d" }}{% if selected_city_id %}&kota={{ selected_city_id }}{% endif %}" class="btn btn-outline">⬇ Export Ringkasan (Excel)</a>
+        {% endif %}
+        <a href="{% url 'complaints:export_excel' %}?mulai={{ period_start|date:"Y-m-d" }}&selesai={{ period_end|date:"Y-m-d" }}{% if selected_city_id %}&kota={{ selected_city_id }}{% endif %}" class="btn btn-gold">⬇ Download Semua Data (Excel)</a>
+    </div>
 </div>
 <p class="subtitle">Ringkasan penanganan komplain -
 {% if request.user.staff_profile.branch %}
