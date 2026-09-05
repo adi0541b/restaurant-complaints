@@ -91,6 +91,7 @@ def home_submission(request):
         initial_branch = Branch.objects.filter(code__iexact=branch_code, is_active=True).first()
         if initial_branch:
             initial['branch'] = initial_branch.pk
+
     initial['cs_handled_time'] = timezone.localtime(timezone.now()).strftime('%Y-%m-%dT%H:%M')
 
     if request.method == 'POST':
@@ -136,14 +137,12 @@ def status_check(request):
                 messages.error(request, 'Komplain tidak ditemukan. Periksa kembali kode dan nomor HP Anda.')
     else:
         form = StatusCheckForm()
-
     return render(request, 'complaints/status_check.html', {'form': form, 'complaint': complaint})
 
 
 def satisfaction_rating(request, code):
     """Pelanggan memberi rating kepuasan setelah komplain berstatus 'selesai'."""
     complaint = get_object_or_404(Complaint, code=code)
-
     if complaint.status != Complaint.Status.SELESAI:
         messages.info(request, 'Rating hanya dapat diberikan setelah komplain selesai ditangani.')
         return redirect('complaints:status_check')
@@ -158,7 +157,6 @@ def satisfaction_rating(request, code):
             return redirect('complaints:status_check')
     else:
         form = SatisfactionRatingForm(instance=complaint)
-
     return render(request, 'complaints/rating.html', {'form': form, 'complaint': complaint})
 
 
@@ -194,19 +192,23 @@ def _visible_complaints_for(user):
     profile = getattr(user, 'staff_profile', None)
     if profile is None:
         return qs.none()
+
     if profile.has_full_visibility:
         # Admin Pusat, Manager Wilayah, dan Staff Input Komplain melihat SEMUA outlet.
         return qs
+
     if profile.is_manager or profile.is_qc_trainer:
         # Manager Kota & QC/Trainer: semua outlet yang berada di kota yang sama.
         if profile.city_id:
             return qs.filter(branch__city=profile.city)
         return qs.none()
+
     if profile.is_staff_pic:
         # Staff/PIC Outlet: hanya outlet spesifiknya sendiri.
         if profile.branch_id:
             return qs.filter(branch=profile.branch)
         return qs.none()
+
     return qs.none()
 
 
@@ -542,6 +544,7 @@ def export_complaints_excel(request):
         )
 
     qs = qs.order_by('-created_at')
+
     if only_overdue:
         qs = [c for c in qs if c.is_overdue]
 
@@ -550,7 +553,7 @@ def export_complaints_excel(request):
     ws.title = 'Data Komplain'
 
     headers = [
-        'Kode', 'Nama Pelanggan', 'No. HP', 'Email', 'Outlet', 'No. Meja',
+        'Kode', 'Nama Pelanggan', 'No. HP', 'Email', 'Kota', 'Outlet', 'No. Meja',
         'Tanggal Kunjungan', 'No. Pesanan', 'Sumber Komplain',
         'Jam Komplain Masuk', 'Jam Ditangani CS',
         'Jenis Komplain', 'Rincian Komplain', 'Tingkat Keparahan',
@@ -580,36 +583,37 @@ def export_complaints_excel(request):
         ws.cell(row=row_idx, column=2, value=c.customer_name)
         ws.cell(row=row_idx, column=3, value=c.customer_phone)
         ws.cell(row=row_idx, column=4, value=c.customer_email)
-        ws.cell(row=row_idx, column=5, value=c.branch.name if c.branch else '')
-        ws.cell(row=row_idx, column=6, value=c.table_number)
-        ws.cell(row=row_idx, column=7, value=c.visit_date.strftime('%d-%m-%Y') if c.visit_date else '')
-        ws.cell(row=row_idx, column=8, value=c.order_number)
-        ws.cell(row=row_idx, column=9, value=str(c.source) if c.source else '')
-        ws.cell(row=row_idx, column=10, value=_fmt(c.customer_complaint_time))
-        ws.cell(row=row_idx, column=11, value=_fmt(c.cs_handled_time))
-        ws.cell(row=row_idx, column=12, value=c.get_category_display())
-        ws.cell(row=row_idx, column=13, value=c.detail_item.name if c.detail_item else '')
-        ws.cell(row=row_idx, column=14, value=c.get_severity_display())
-        ws.cell(row=row_idx, column=15, value=c.get_status_display())
-        ws.cell(row=row_idx, column=16, value=c.description)
-        ws.cell(row=row_idx, column=17, value=str(c.assigned_to) if c.assigned_to else '')
-        ws.cell(row=row_idx, column=18, value=c.resolution_notes)
-        ws.cell(row=row_idx, column=19, value=_fmt(c.resolution_notes_filled_at))
-        ws.cell(row=row_idx, column=20, value=c.internal_notes)
-        ws.cell(row=row_idx, column=21, value=_fmt(c.internal_notes_filled_at))
-        ws.cell(row=row_idx, column=22, value=c.quality_alert)
-        ws.cell(row=row_idx, column=23, value=_fmt(c.quality_alert_filled_at))
-        ws.cell(row=row_idx, column=24, value=c.validation_notes)
-        ws.cell(row=row_idx, column=25, value=_fmt(c.validation_notes_filled_at))
-        ws.cell(row=row_idx, column=26, value=_fmt(c.created_at))
-        ws.cell(row=row_idx, column=27, value=_fmt(c.sla_deadline))
-        ws.cell(row=row_idx, column=28, value='Ya' if c.is_overdue else 'Tidak')
-        ws.cell(row=row_idx, column=29, value=_fmt(c.resolved_at))
-        ws.cell(row=row_idx, column=30, value=c.satisfaction_rating)
-        ws.cell(row=row_idx, column=31, value=c.satisfaction_feedback)
+        ws.cell(row=row_idx, column=5, value=c.branch.city.name if c.branch and c.branch.city else '')
+        ws.cell(row=row_idx, column=6, value=c.branch.name if c.branch else '')
+        ws.cell(row=row_idx, column=7, value=c.table_number)
+        ws.cell(row=row_idx, column=8, value=c.visit_date.strftime('%d-%m-%Y') if c.visit_date else '')
+        ws.cell(row=row_idx, column=9, value=c.order_number)
+        ws.cell(row=row_idx, column=10, value=str(c.source) if c.source else '')
+        ws.cell(row=row_idx, column=11, value=_fmt(c.customer_complaint_time))
+        ws.cell(row=row_idx, column=12, value=_fmt(c.cs_handled_time))
+        ws.cell(row=row_idx, column=13, value=c.get_category_display())
+        ws.cell(row=row_idx, column=14, value=c.detail_item.name if c.detail_item else '')
+        ws.cell(row=row_idx, column=15, value=c.get_severity_display())
+        ws.cell(row=row_idx, column=16, value=c.get_status_display())
+        ws.cell(row=row_idx, column=17, value=c.description)
+        ws.cell(row=row_idx, column=18, value=str(c.assigned_to) if c.assigned_to else '')
+        ws.cell(row=row_idx, column=19, value=c.resolution_notes)
+        ws.cell(row=row_idx, column=20, value=_fmt(c.resolution_notes_filled_at))
+        ws.cell(row=row_idx, column=21, value=c.internal_notes)
+        ws.cell(row=row_idx, column=22, value=_fmt(c.internal_notes_filled_at))
+        ws.cell(row=row_idx, column=23, value=c.quality_alert)
+        ws.cell(row=row_idx, column=24, value=_fmt(c.quality_alert_filled_at))
+        ws.cell(row=row_idx, column=25, value=c.validation_notes)
+        ws.cell(row=row_idx, column=26, value=_fmt(c.validation_notes_filled_at))
+        ws.cell(row=row_idx, column=27, value=_fmt(c.created_at))
+        ws.cell(row=row_idx, column=28, value=_fmt(c.sla_deadline))
+        ws.cell(row=row_idx, column=29, value='Ya' if c.is_overdue else 'Tidak')
+        ws.cell(row=row_idx, column=30, value=_fmt(c.resolved_at))
+        ws.cell(row=row_idx, column=31, value=c.satisfaction_rating)
+        ws.cell(row=row_idx, column=32, value=c.satisfaction_feedback)
 
     # Lebar kolom otomatis (sederhana, dibatasi agar tidak terlalu lebar)
-    widths = [12, 20, 15, 22, 22, 10, 16, 16, 16, 18, 18, 16, 20, 16, 14, 40, 18,
+    widths = [12, 20, 15, 22, 18, 22, 10, 16, 16, 16, 18, 18, 16, 20, 16, 14, 40, 18,
               35, 18, 35, 18, 30, 18, 30, 18, 18, 18, 12, 18, 14, 35]
     for col_idx, width in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
@@ -873,7 +877,6 @@ def detail_item_edit(request, pk):
 def manager_staff_list(request):
     profile = request.user.staff_profile
     city = profile.city
-
     if city:
         staff_profiles = StaffProfile.objects.filter(
             Q(role=StaffProfile.Role.QC_TRAINER, city=city) |
@@ -881,7 +884,6 @@ def manager_staff_list(request):
         ).select_related('user', 'branch', 'city').order_by('role', 'user__username')
     else:
         staff_profiles = StaffProfile.objects.none()
-
     return render(request, 'complaints/manager_staff_list.html', {
         'staff_profiles': staff_profiles, 'city': city,
     })
@@ -913,7 +915,6 @@ def manager_edit_phone(request, pk):
             return redirect('complaints:manager_staff_list')
     else:
         form = StaffPhoneEditForm(instance=target)
-
     return render(request, 'complaints/manager_edit_phone.html', {
         'form': form, 'target': target,
     })
