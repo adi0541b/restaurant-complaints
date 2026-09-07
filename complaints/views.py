@@ -316,6 +316,15 @@ def dashboard(request):
 
     recent_complaints = qs.order_by('-created_at')[:8]
 
+    # Kunjungan QC Office terbaru (untuk tabel di Dashboard). Mengikuti
+    # filter Kota yang sama dengan Dashboard, tapi TIDAK terikat filter
+    # Periode (supaya tetap terlihat kunjungan terbaru meski di luar rentang
+    # tanggal yang sedang dipilih).
+    recent_qc_visits_qs = OutletVisit.objects.select_related('branch', 'branch__city', 'qc_officer')
+    if selected_city_id:
+        recent_qc_visits_qs = recent_qc_visits_qs.filter(branch__city_id=selected_city_id)
+    recent_qc_visits = recent_qc_visits_qs.order_by('-created_at')[:8]
+
     # ------------------------------------------------------------------
     # Data untuk grafik (Chart.js) di dashboard
     # ------------------------------------------------------------------
@@ -369,6 +378,7 @@ def dashboard(request):
         'outlet_ranking': outlet_ranking,
         'city_ranking': city_ranking,
         'recent_complaints': recent_complaints,
+        'recent_qc_visits': recent_qc_visits,
         'chart_data': chart_data,
         'available_cities': available_cities,
         'selected_city_id': selected_city_id,

@@ -23,6 +23,12 @@
             </div>
         </div>
 
+        <div style="margin-bottom:16px;">
+            {{ form.employee_name.label_tag }}{{ form.employee_name }}
+            {% if form.employee_name.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.employee_name.help_text }}</p>{% endif %}
+            {% for error in form.employee_name.errors %}<p style="color:var(--danger);font-size:0.85rem;">{{ error }}</p>{% endfor %}
+        </div>
+
         <div style="margin-bottom:20px;">
             <label style="font-weight:600;display:block;margin-bottom:6px;">Foto Selfi</label>
             <input type="file" name="selfie_photo" id="selfie-input" accept="image/*" capture="user" style="display:none;" required>
@@ -100,7 +106,7 @@
     document.querySelectorAll('.star-rating-group').forEach(function (group) {
         var field = group.dataset.field;
         var label = group.dataset.label;
-        var html = '<label style="font-weight:600;display:block;margin-bottom:6px;">' + label + '</label><div class="star-rating">';
+        var html = '<label style="font-weight:600;display:block;margin-bottom:6px;">' + label + '</label><div class="qc-star-rating">';
         for (var i = 5; i >= 1; i--) {
             html += '<input type="radio" id="star' + i + '_' + field + '" name="' + field + '" value="' + i + '" required>';
             html += '<label for="star' + i + '_' + field + '" title="' + i + '">&#9733;</label>';

@@ -240,13 +240,15 @@ class OutletVisitForm(forms.ModelForm):
     class Meta:
         model = OutletVisit
         fields = [
-            'branch', 'selfie_photo', 'order_time', 'food_ready_time',
+            'employee_name', 'branch', 'selfie_photo', 'order_time', 'food_ready_time',
             'product_complaint_notes', 'service_complaint_notes',
             'rating_food_quality', 'rating_product_appearance',
             'rating_facility_comfort', 'rating_cleanliness',
             'rating_serving_speed', 'rating_staff_service',
         ]
         widgets = {
+            'employee_name': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Nama karyawan outlet yang dinilai'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
             'selfie_photo': forms.ClearableFileInput(attrs={
                 'class': 'form-control', 'accept': 'image/*', 'capture': 'user',
@@ -270,6 +272,7 @@ class OutletVisitForm(forms.ModelForm):
             'rating_staff_service': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
         }
         labels = {
+            'employee_name': 'Nama Karyawan',
             'branch': 'Outlet yang Dikunjungi',
             'selfie_photo': 'Foto Selfi',
             'order_time': 'Tgl & Jam Order Makanan (sesuai struk)',

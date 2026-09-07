@@ -421,6 +421,10 @@ class OutletVisit(models.Model):
         settings.AUTH_USER_MODEL, verbose_name='QC Office',
         related_name='outlet_visits', on_delete=models.PROTECT,
     )
+    employee_name = models.CharField(
+        'Nama Karyawan', max_length=150, blank=True,
+        help_text='Nama karyawan outlet yang dikunjungi/dinilai saat itu.',
+    )
     branch = models.ForeignKey(
         Branch, verbose_name='Outlet yang Dikunjungi', related_name='qc_visits',
         on_delete=models.PROTECT,

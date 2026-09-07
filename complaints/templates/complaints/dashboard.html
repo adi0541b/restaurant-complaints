@@ -101,15 +101,15 @@
     <h2>Komplain Terbaru</h2>
     <table>
         <thead>
-            <tr><th>Kode</th><th>Pelanggan</th><th>No. HP</th><th>Outlet</th><th>Kategori</th><th>Status</th><th>Deadline</th></tr>
+            <tr><th>Kode</th><th>Pelanggan</th><th>Outlet</th><th>Sumber Komplain</th><th>Kategori</th><th>Status</th><th>Deadline</th></tr>
         </thead>
         <tbody>
         {% for c in recent_complaints %}
             <tr>
                 <td><a href="{% url 'complaints:complaint_detail' c.pk %}">{{ c.code }}</a></td>
                 <td>{{ c.customer_name }}</td>
-                <td>{{ c.customer_phone }}</td>
                 <td>{{ c.branch.name }}</td>
+                <td>{{ c.source|default:"-" }}</td>
                 <td>{{ c.get_category_display }}</td>
                 <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
                 <td>{% if c.is_overdue %}<span class="badge badge-overdue">Lewat</span>{% else %}OK{% endif %}</td>
@@ -121,6 +121,32 @@
     </table>
     <div style="margin-top:14px;"><a href="{% url 'complaints:complaint_list' %}" class="btn btn-outline">Lihat Semua Komplain</a></div>
 </div>
+
+{% if recent_qc_visits %}
+<div class="card">
+    <h2>Kunjungan QC Office Terbaru</h2>
+    <table>
+        <thead>
+            <tr><th>Tanggal</th><th>QC Office</th><th>Nama Karyawan</th><th>Outlet</th><th>Kota</th><th>Kecepatan Penyajian</th><th>Rating Rata-rata</th></tr>
+        </thead>
+        <tbody>
+        {% for v in recent_qc_visits %}
+            <tr>
+                <td>{{ v.created_at|date:"d M Y, H:i" }}</td>
+                <td>{{ v.qc_officer.get_full_name|default:v.qc_officer.username }}</td>
+                <td>{{ v.employee_name|default:"-" }}</td>
+                <td>{{ v.branch.name }}</td>
+                <td>{{ v.branch.city.name|default:"-" }}</td>
+                <td>{{ v.serving_speed_display }}</td>
+                <td>⭐ {{ v.rating_average }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7">Belum ada kunjungan QC Office.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
 {% if city_ranking|length > 1 %}
 <div class="card">
