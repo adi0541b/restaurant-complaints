@@ -21,8 +21,12 @@
                 {% if user.staff_profile.is_input_staff %}
                     <a href="{% url 'complaints:home' %}">Input Komplain</a>
                 {% endif %}
-                <a href="{% url 'complaints:dashboard' %}">Dashboard</a>
-                <a href="{% url 'complaints:complaint_list' %}">Daftar Komplain</a>
+                {% if user.staff_profile.is_qc_office %}
+                    <a href="{% url 'complaints:qc_office_visit' %}">Kunjungan Outlet</a>
+                {% else %}
+                    <a href="{% url 'complaints:dashboard' %}">Dashboard</a>
+                    <a href="{% url 'complaints:complaint_list' %}">Daftar Komplain</a>
+                {% endif %}
                 {% if user.staff_profile.is_admin_pusat %}
                     <a href="{% url 'complaints:city_list' %}">Kelola Kota</a>
                     <a href="{% url 'complaints:admin_panel' %}">Panel Admin</a>
@@ -30,7 +34,9 @@
                 {% if user.staff_profile.is_manager %}
                     <a href="{% url 'complaints:manager_staff_list' %}">Kelola Nomor WA</a>
                 {% endif %}
-                <a href="{% url 'complaints:password_change' %}">Ganti Password</a>
+                {% if not user.staff_profile.is_qc_office %}
+                    <a href="{% url 'complaints:password_change' %}">Ganti Password</a>
+                {% endif %}
                 <form method="post" action="{% url 'complaints:logout' %}" class="nav-logout-form">
                     {% csrf_token %}
                     <button type="submit" class="nav-logout-btn">Keluar ({{ user.first_name|default:user.username }})</button>
@@ -40,24 +46,20 @@
             {% endif %}
         </div>
     </nav>
-
     <script>
         function toggleMobileMenu() {
             document.getElementById('nav-links').classList.toggle('nav-links-open');
             document.querySelector('.hamburger-btn').classList.toggle('hamburger-open');
         }
     </script>
-
     <div class="container">
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
-
         {% block content %}{% endblock %}
     </div>
-
     <div class="footer">&copy; {% now "Y" %} {{ BRAND_NAME }} &mdash; Sistem Manajemen Komplain Pelanggan</div>
 </body>
 </html>

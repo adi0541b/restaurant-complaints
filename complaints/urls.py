@@ -1,5 +1,4 @@
 from django.urls import path
-
 from . import views
 
 app_name = 'complaints'
@@ -16,8 +15,12 @@ urlpatterns = [
     path('logout/', views.StaffLogoutView.as_view(), name='logout'),
     path('ganti-password/', views.StaffPasswordChangeView.as_view(), name='password_change'),
     path('ganti-password/selesai/', views.StaffPasswordChangeDoneView.as_view(), name='password_change_done'),
+
     path('manager/staff/', views.manager_staff_list, name='manager_staff_list'),
     path('manager/staff/<int:pk>/edit-phone/', views.manager_edit_phone, name='manager_edit_phone'),
+
+    # QC Office
+    path('qc-office/kunjungan/', views.qc_office_visit, name='qc_office_visit'),
 
     # Internal - Staff / Manager / Admin Pusat
     path('dashboard/', views.dashboard, name='dashboard'),

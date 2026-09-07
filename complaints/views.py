@@ -19,6 +19,7 @@ from .forms import (
     ComplaintSourceForm,
     ComplaintSubmissionForm,
     ComplaintUpdateForm,
+    OutletVisitForm,
     SatisfactionRatingForm,
     SiteSettingsForm,
     StaffAccountCreateForm,
@@ -29,7 +30,7 @@ from .forms import (
 )
 from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
-    SiteSettings, StaffProfile,
+    OutletVisit, SiteSettings, StaffProfile,
 )
 
 User = get_user_model()
@@ -188,7 +189,7 @@ class StaffPasswordChangeDoneView(auth_views.PasswordChangeDoneView):
 # Helper: batasi queryset komplain sesuai peran user
 # =============================================================================
 def _visible_complaints_for(user):
-    qs = Complaint.objects.select_related('branch', 'assigned_to')
+    qs = Complaint.objects.select_related('branch', 'branch__city', 'assigned_to', 'source')
     profile = getattr(user, 'staff_profile', None)
     if profile is None:
         return qs.none()
@@ -217,6 +218,12 @@ def _visible_complaints_for(user):
 # =============================================================================
 @login_required
 def dashboard(request):
+    # QC Office tidak punya akses Dashboard -- otomatis dialihkan ke halaman
+    # Kunjungan Outlet (satu-satunya halaman yang mereka pakai).
+    profile_check = getattr(request.user, 'staff_profile', None)
+    if profile_check and profile_check.is_qc_office:
+        return redirect('complaints:qc_office_visit')
+
     qs = _visible_complaints_for(request.user)
 
     # Filter Kota (khusus role yang punya akses ke semua kota, mis. Pusat/Admin/CS)
@@ -1015,3 +1022,50 @@ def manager_edit_phone(request, pk):
     return render(request, 'complaints/manager_edit_phone.html', {
         'form': form, 'target': target,
     })
+
+
+# =============================================================================
+# QC OFFICE: form kunjungan outlet (penilaian Service & Produk)
+# =============================================================================
+def qc_office_required(view_func):
+    """Membatasi akses HANYA untuk user dengan peran QC Office."""
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        profile = getattr(request.user, 'staff_profile', None)
+        if profile is None or not profile.is_qc_office:
+            raise PermissionDenied('Hanya QC Office yang dapat mengakses halaman ini.')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@qc_office_required
+def qc_office_visit(request):
+    profile = request.user.staff_profile
+    city = profile.city
+
+    if request.method == 'POST':
+        form = OutletVisitForm(request.POST, request.FILES, city=city)
+        if form.is_valid():
+            visit = form.save(commit=False)
+            visit.qc_officer = request.user
+            visit.save()
+            messages.success(
+                request,
+                f'Kunjungan ke outlet "{visit.branch.name}" berhasil disimpan. '
+                f'Kecepatan penyajian: {visit.serving_speed_display}.'
+            )
+            return redirect('complaints:qc_office_visit')
+    else:
+        form = OutletVisitForm(city=city)
+
+    recent_visits = OutletVisit.objects.filter(
+        qc_officer=request.user
+    ).select_related('branch').order_by('-created_at')[:10]
+
+    context = {
+        'form': form,
+        'city': city,
+        'recent_visits': recent_visits,
+    }
+    return render(request, 'complaints/qc_office_visit_form.html', context)

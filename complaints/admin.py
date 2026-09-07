@@ -3,7 +3,7 @@ from django.utils.html import format_html
 
 from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
-    ComplaintTimelineEntry, SiteSettings, StaffProfile,
+    ComplaintTimelineEntry, OutletVisit, SiteSettings, StaffProfile,
 )
 
 
@@ -131,3 +131,21 @@ class ComplaintAdmin(admin.ModelAdmin):
 class ComplaintTimelineEntryAdmin(admin.ModelAdmin):
     list_display = ('complaint', 'old_status', 'new_status', 'changed_by', 'created_at')
     list_filter = ('new_status',)
+
+
+@admin.register(OutletVisit)
+class OutletVisitAdmin(admin.ModelAdmin):
+    list_display = (
+        'branch', 'qc_officer', 'created_at', 'serving_speed_display', 'rating_average_display',
+    )
+    list_filter = ('branch__city', 'branch')
+    search_fields = ('branch__name', 'qc_officer__username', 'qc_officer__first_name')
+    readonly_fields = ('created_at',)
+
+    @admin.display(description='Kecepatan Penyajian')
+    def serving_speed_display(self, obj):
+        return obj.serving_speed_display
+
+    @admin.display(description='Rating Rata-rata')
+    def rating_average_display(self, obj):
+        return obj.rating_average

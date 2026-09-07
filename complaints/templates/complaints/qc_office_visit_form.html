@@ -1,0 +1,211 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kunjungan Outlet - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Kunjungan Outlet</h1>
+<p class="subtitle">Isi penilaian setelah mengunjungi outlet sesuai jadwal.</p>
+
+<div class="card">
+    <form method="post" enctype="multipart/form-data" id="qc-visit-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:16px;">
+            <div>
+                <label style="font-weight:600;display:block;margin-bottom:4px;">Nama</label>
+                <div class="form-control" style="background:#F5F0E6;">{{ request.user.get_full_name|default:request.user.username }}</div>
+            </div>
+            <div>
+                <label style="font-weight:600;display:block;margin-bottom:4px;">Kota</label>
+                <div class="form-control" style="background:#F5F0E6;">{{ city.name|default:"- Belum diset -" }}</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="font-weight:600;display:block;margin-bottom:6px;">Foto Selfi</label>
+            <input type="file" name="selfie_photo" id="selfie-input" accept="image/*" capture="user" style="display:none;" required>
+            <button type="button" onclick="document.getElementById('selfie-input').click()" class="btn btn-primary">📷 Ambil Foto Selfi</button>
+            <div id="selfie-status" style="color:var(--text-muted);font-size:0.85rem;margin-top:6px;">Belum ada foto. Foto wajib diambil langsung dari kamera (bukan upload).</div>
+            <canvas id="selfie-canvas" style="display:none;"></canvas>
+            <img id="selfie-preview" style="display:none;max-width:280px;border-radius:8px;margin-top:10px;">
+            {% for error in form.selfie_photo.errors %}<p style="color:var(--danger);font-size:0.85rem;">{{ error }}</p>{% endfor %}
+        </div>
+
+        {{ form.branch.label_tag }}{{ form.branch }}
+        {% for error in form.branch.errors %}<p style="color:var(--danger);font-size:0.85rem;margin-top:-4px;">{{ error }}</p>{% endfor %}
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+            <div>
+                {{ form.order_time.label_tag }}{{ form.order_time }}
+                {% for error in form.order_time.errors %}<p style="color:var(--danger);font-size:0.85rem;">{{ error }}</p>{% endfor %}
+            </div>
+            <div>
+                {{ form.food_ready_time.label_tag }}{{ form.food_ready_time }}
+                {% for error in form.food_ready_time.errors %}<p style="color:var(--danger);font-size:0.85rem;">{{ error }}</p>{% endfor %}
+            </div>
+        </div>
+
+        <div style="background:#FBF3E3;border-radius:8px;padding:12px 16px;margin:12px 0 20px;">
+            <div style="color:var(--text-muted);font-size:0.85rem;">Kecepatan Penyajian (otomatis dihitung)</div>
+            <div id="serving-speed-display" style="font-size:1.3rem;font-weight:700;color:var(--maroon);">-</div>
+        </div>
+
+        {{ form.product_complaint_notes.label_tag }}{{ form.product_complaint_notes }}
+        {{ form.service_complaint_notes.label_tag }}{{ form.service_complaint_notes }}
+
+        <h3 style="margin-top:24px;">Rating Penilaian (1-5 Bintang)</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:12px;">
+            <div class="star-rating-group" data-field="rating_food_quality" data-label="Kualitas Makanan"></div>
+            <div class="star-rating-group" data-field="rating_product_appearance" data-label="Tampilan Produk"></div>
+            <div class="star-rating-group" data-field="rating_facility_comfort" data-label="Fasilitas/Kenyamanan"></div>
+            <div class="star-rating-group" data-field="rating_cleanliness" data-label="Kebersihan"></div>
+            <div class="star-rating-group" data-field="rating_serving_speed" data-label="Kecepatan Penyajian"></div>
+            <div class="star-rating-group" data-field="rating_staff_service" data-label="Pelayanan Staff"></div>
+        </div>
+
+        <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-primary">Simpan Kunjungan</button>
+        </div>
+    </form>
+</div>
+
+{% if recent_visits %}
+<div class="card">
+    <h2>Riwayat Kunjungan Terakhir</h2>
+    <table>
+        <thead>
+            <tr><th>Tanggal</th><th>Outlet</th><th>Kecepatan Penyajian</th><th>Rating Rata-rata</th></tr>
+        </thead>
+        <tbody>
+        {% for v in recent_visits %}
+            <tr>
+                <td>{{ v.created_at|date:"d M Y, H:i" }}</td>
+                <td>{{ v.branch.name }}</td>
+                <td>{{ v.serving_speed_display }}</td>
+                <td>⭐ {{ v.rating_average }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+(function () {
+    // ------------------------------------------------------------------
+    // Render rating bintang 1-5 untuk tiap grup .star-rating-group
+    // ------------------------------------------------------------------
+    document.querySelectorAll('.star-rating-group').forEach(function (group) {
+        var field = group.dataset.field;
+        var label = group.dataset.label;
+        var html = '<label style="font-weight:600;display:block;margin-bottom:6px;">' + label + '</label><div class="star-rating">';
+        for (var i = 5; i >= 1; i--) {
+            html += '<input type="radio" id="star' + i + '_' + field + '" name="' + field + '" value="' + i + '" required>';
+            html += '<label for="star' + i + '_' + field + '" title="' + i + '">&#9733;</label>';
+        }
+        html += '</div>';
+        group.innerHTML = html;
+    });
+
+    // ------------------------------------------------------------------
+    // Hitung Kecepatan Penyajian otomatis (selisih order_time & food_ready_time)
+    // ------------------------------------------------------------------
+    function updateServingSpeed() {
+        var orderEl = document.getElementById('id_order_time');
+        var readyEl = document.getElementById('id_food_ready_time');
+        var displayEl = document.getElementById('serving-speed-display');
+        if (!orderEl.value || !readyEl.value) {
+            displayEl.textContent = '-';
+            return;
+        }
+        var diffMs = new Date(readyEl.value) - new Date(orderEl.value);
+        var negatif = diffMs < 0;
+        diffMs = Math.abs(diffMs);
+        var totalSeconds = Math.floor(diffMs / 1000);
+        var jam = Math.floor(totalSeconds / 3600);
+        var menit = Math.floor((totalSeconds % 3600) / 60);
+        var detik = totalSeconds % 60;
+        displayEl.textContent = (negatif ? '-' : '') + jam + 'j ' + menit + 'm ' + detik + 'd';
+    }
+    document.getElementById('id_order_time').addEventListener('change', updateServingSpeed);
+    document.getElementById('id_food_ready_time').addEventListener('change', updateServingSpeed);
+
+    // ------------------------------------------------------------------
+    // Ambil Foto Selfi langsung dari kamera, overlay tanggal/jam/lokasi
+    // ------------------------------------------------------------------
+    var selfieBlob = null;
+    var currentCoords = null;
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function (pos) { currentCoords = pos.coords; },
+            function (err) { console.warn('Lokasi tidak tersedia:', err.message); },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
+
+    document.getElementById('selfie-input').addEventListener('change', function (e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (evt) {
+            var img = new Image();
+            img.onload = function () {
+                var canvas = document.getElementById('selfie-canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                var now = new Date();
+                var tanggalJam = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ', ' + now.toLocaleTimeString('id-ID');
+                var lokasiText = 'Lokasi: tidak tersedia';
+                if (currentCoords) {
+                    lokasiText = 'Lokasi: ' + currentCoords.latitude.toFixed(5) + ', ' + currentCoords.longitude.toFixed(5);
+                }
+                var lines = [tanggalJam, lokasiText];
+                var fontSize = Math.max(18, Math.round(canvas.width / 28));
+                ctx.font = fontSize + 'px Arial';
+                var lineHeight = fontSize + 8;
+                var padding = 14;
+                var boxHeight = lineHeight * lines.length + padding * 2;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textBaseline = 'top';
+                lines.forEach(function (line, i) {
+                    ctx.fillText(line, padding, canvas.height - boxHeight + padding + i * lineHeight);
+                });
+
+                canvas.toBlob(function (blob) {
+                    selfieBlob = blob;
+                    var previewImg = document.getElementById('selfie-preview');
+                    previewImg.src = URL.createObjectURL(blob);
+                    previewImg.style.display = 'block';
+                    document.getElementById('selfie-status').textContent = 'Foto berhasil diambil (' + tanggalJam + ').';
+                }, 'image/jpeg', 0.9);
+            };
+            img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('qc-visit-form').addEventListener('submit', function (e) {
+        if (!selfieBlob) {
+            e.preventDefault();
+            alert('Silakan ambil foto selfi terlebih dahulu (tunggu proses overlay tanggal/jam/lokasi selesai).');
+            return;
+        }
+        // Ganti file asli di input dengan versi yang sudah diberi overlay
+        var dt = new DataTransfer();
+        var file = new File([selfieBlob], 'selfie_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+        dt.items.add(file);
+        document.getElementById('selfie-input').files = dt.files;
+    });
+})();
+</script>
+{% endblock %}

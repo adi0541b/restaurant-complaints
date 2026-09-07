@@ -308,3 +308,4 @@ input.date-id-format::-webkit-datetime-edit-fields-wrapper { color: transparent;
      bawahnya (mis. "Kembali ke Panel Admin") menimpa tombol di atasnya. */
   .subtitle { margin-top: 8px; }
 }
+.star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; } .star-rating input { display: none; } .star-rating label { font-size: 2rem; color: #ddd; cursor: pointer; transition: color 0.15s; } .star-rating input:checked ~ label { color: var(--gold); } .star-rating label:hover, .star-rating label:hover ~ label { color: var(--gold-light); }

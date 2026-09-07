@@ -4,7 +4,7 @@ from django.contrib.auth.forms import PasswordChangeForm, UserCreationForm
 
 from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
-    SiteSettings, StaffProfile,
+    OutletVisit, SiteSettings, StaffProfile,
 )
 
 User = get_user_model()
@@ -229,6 +229,72 @@ class ComplaintUpdateForm(forms.ModelForm):
 
 
 # =============================================================================
+# QC OFFICE: form kunjungan outlet (penilaian Service & Produk)
+# =============================================================================
+class OutletVisitForm(forms.ModelForm):
+    """Form kunjungan QC Office. Field 'branch' otomatis difilter sesuai
+    kota user yang login (di-set lewat parameter city saat inisialisasi).
+    Rating bintang (1-5) dirender manual di template, bukan lewat widget
+    Django biasa, supaya bisa dibuat tampilan bintang yang bisa diklik."""
+
+    class Meta:
+        model = OutletVisit
+        fields = [
+            'branch', 'selfie_photo', 'order_time', 'food_ready_time',
+            'product_complaint_notes', 'service_complaint_notes',
+            'rating_food_quality', 'rating_product_appearance',
+            'rating_facility_comfort', 'rating_cleanliness',
+            'rating_serving_speed', 'rating_staff_service',
+        ]
+        widgets = {
+            'branch': forms.Select(attrs={'class': 'form-select'}),
+            'selfie_photo': forms.ClearableFileInput(attrs={
+                'class': 'form-control', 'accept': 'image/*', 'capture': 'user',
+                'id': 'id_selfie_photo_input',
+            }),
+            'order_time': forms.DateTimeInput(attrs={
+                'class': 'form-control', 'type': 'datetime-local'}),
+            'food_ready_time': forms.DateTimeInput(attrs={
+                'class': 'form-control', 'type': 'datetime-local'}),
+            'product_complaint_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Kosongkan jika tidak ada komplain produk'}),
+            'service_complaint_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3,
+                'placeholder': 'Kosongkan jika tidak ada komplain servis'}),
+            'rating_food_quality': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'rating_product_appearance': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'rating_facility_comfort': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'rating_cleanliness': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'rating_serving_speed': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'rating_staff_service': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+        }
+        labels = {
+            'branch': 'Outlet yang Dikunjungi',
+            'selfie_photo': 'Foto Selfi',
+            'order_time': 'Tgl & Jam Order Makanan (sesuai struk)',
+            'food_ready_time': 'Tgl & Jam Makanan Tersedia',
+            'product_complaint_notes': 'Komplain Produk',
+            'service_complaint_notes': 'Komplain Servis',
+            'rating_food_quality': 'Kualitas Makanan',
+            'rating_product_appearance': 'Tampilan Produk',
+            'rating_facility_comfort': 'Fasilitas/Kenyamanan',
+            'rating_cleanliness': 'Kebersihan',
+            'rating_serving_speed': 'Kecepatan Penyajian',
+            'rating_staff_service': 'Pelayanan Staff',
+        }
+
+    def __init__(self, *args, **kwargs):
+        city = kwargs.pop('city', None)
+        super().__init__(*args, **kwargs)
+        if city:
+            self.fields['branch'].queryset = Branch.objects.filter(city=city, is_active=True).order_by('name')
+        else:
+            self.fields['branch'].queryset = Branch.objects.none()
+        self.fields['branch'].empty_label = '-- Pilih Outlet --'
+
+
+# =============================================================================
 # PANEL ADMIN PUSAT: kelola akun staff, outlet, dan identitas perusahaan
 # =============================================================================
 ADMIN_TEXT_ATTRS = {'class': 'form-control'}
@@ -250,7 +316,7 @@ class StaffAccountCreateForm(UserCreationForm):
     city = forms.ModelChoiceField(
         label='Kota', queryset=City.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Manager Kota atau QC/Trainer (akses semua outlet di kota itu).',
+        help_text='Isi untuk peran Manager Kota, QC/Trainer, atau QC Office (akses semua outlet di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))
@@ -293,7 +359,7 @@ class StaffAccountEditForm(forms.ModelForm):
     city = forms.ModelChoiceField(
         label='Kota', queryset=City.objects.filter(is_active=True), required=False,
         widget=forms.Select(attrs=ADMIN_SELECT_ATTRS),
-        help_text='Isi untuk peran Manager Kota atau QC/Trainer (akses semua outlet di kota itu).',
+        help_text='Isi untuk peran Manager Kota, QC/Trainer, atau QC Office (akses semua outlet di kota itu).',
     )
     phone = forms.CharField(label='No. WhatsApp', max_length=30, required=False,
                              widget=forms.TextInput(attrs=ADMIN_TEXT_ATTRS))

@@ -64,6 +64,7 @@ class StaffProfile(models.Model):
     class Role(models.TextChoices):
         STAFF = 'staff', 'Leader Outlet'
         QC_TRAINER = 'qc_trainer', 'QC/Trainer'
+        QC_OFFICE = 'qc_office', 'QC Office'
         INPUT_STAFF = 'input_staff', 'CS'
         VALIDATOR = 'validator', 'Validator'
         MANAGER = 'manager', 'Manager Area'
@@ -122,6 +123,10 @@ class StaffProfile(models.Model):
     @property
     def is_qc_trainer(self):
         return self.role == self.Role.QC_TRAINER
+
+    @property
+    def is_qc_office(self):
+        return self.role == self.Role.QC_OFFICE
 
     @property
     def can_handle_case(self):
@@ -309,6 +314,10 @@ class Complaint(models.Model):
         'Reminder Solusi Terkirim', default=False, editable=False,
         help_text='Penanda internal supaya reminder WhatsApp (12 jam, Solusi belum diisi) tidak terkirim berulang.',
     )
+    sheets_backup_sent = models.BooleanField(
+        'Backup Google Sheets Terkirim', default=False, editable=False,
+        help_text='Penanda internal supaya backup ke Google Sheets (saat Deadline lewat) tidak terkirim berulang.',
+    )
 
     # --- Kepuasan pelanggan ------------------------------------------------
     satisfaction_rating = models.PositiveSmallIntegerField(
@@ -398,6 +407,84 @@ class Complaint(models.Model):
             self.sla_deadline = self.calculate_sla_deadline()
 
         super().save(*args, **kwargs)
+
+
+# =============================================================================
+# KUNJUNGAN OUTLET (QC Office) -- penilaian rutin Service & Produk outlet
+# =============================================================================
+class OutletVisit(models.Model):
+    """Catatan kunjungan QC Office ke sebuah outlet: foto selfie (kamera
+    langsung + timestamp & lokasi), waktu order/penyajian, catatan komplain,
+    dan rating bintang 1-5 untuk 6 aspek penilaian."""
+
+    qc_officer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='QC Office',
+        related_name='outlet_visits', on_delete=models.PROTECT,
+    )
+    branch = models.ForeignKey(
+        Branch, verbose_name='Outlet yang Dikunjungi', related_name='qc_visits',
+        on_delete=models.PROTECT,
+    )
+    selfie_photo = models.ImageField(
+        'Foto Selfi', upload_to='qc_visit_selfies/%Y/%m/',
+        help_text='Wajib. Foto diambil langsung dari kamera, berisi tanggal, jam, dan lokasi.',
+    )
+
+    order_time = models.DateTimeField('Tgl & Jam Order Makanan (sesuai struk)')
+    food_ready_time = models.DateTimeField('Tgl & Jam Makanan Tersedia')
+
+    product_complaint_notes = models.TextField('Komplain Produk', blank=True)
+    service_complaint_notes = models.TextField('Komplain Servis', blank=True)
+
+    # --- Rating bintang 1-5 untuk tiap aspek penilaian ---
+    rating_food_quality = models.PositiveSmallIntegerField('Rating: Kualitas Makanan')
+    rating_product_appearance = models.PositiveSmallIntegerField('Rating: Tampilan Produk')
+    rating_facility_comfort = models.PositiveSmallIntegerField('Rating: Fasilitas/Kenyamanan')
+    rating_cleanliness = models.PositiveSmallIntegerField('Rating: Kebersihan')
+    rating_serving_speed = models.PositiveSmallIntegerField('Rating: Kecepatan Penyajian')
+    rating_staff_service = models.PositiveSmallIntegerField('Rating: Pelayanan Staff')
+
+    created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Kunjungan Outlet (QC Office)'
+        verbose_name_plural = 'Kunjungan Outlet (QC Office)'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.branch.name} - {self.created_at.strftime("%d-%m-%Y")} ({self.qc_officer})'
+
+    @property
+    def serving_speed_duration(self):
+        """Selisih waktu antara jam order dan jam makanan tersedia (timedelta).
+        Bisa negatif kalau data salah input (jam tersedia < jam order)."""
+        if not self.order_time or not self.food_ready_time:
+            return None
+        return self.food_ready_time - self.order_time
+
+    @property
+    def serving_speed_display(self):
+        """Format H:M:S yang mudah dibaca, mis. '0j 23m 15d'."""
+        delta = self.serving_speed_duration
+        if delta is None:
+            return '-'
+        total_seconds = int(delta.total_seconds())
+        negatif = total_seconds < 0
+        total_seconds = abs(total_seconds)
+        jam, sisa = divmod(total_seconds, 3600)
+        menit, detik = divmod(sisa, 60)
+        hasil = f'{jam}j {menit}m {detik}d'
+        return f'-{hasil}' if negatif else hasil
+
+    @property
+    def rating_average(self):
+        """Rata-rata dari 6 rating, dipakai untuk ranking outlet."""
+        values = [
+            self.rating_food_quality, self.rating_product_appearance,
+            self.rating_facility_comfort, self.rating_cleanliness,
+            self.rating_serving_speed, self.rating_staff_service,
+        ]
+        return round(sum(values) / len(values), 2)
 
 
 class ComplaintTimelineEntry(models.Model):
