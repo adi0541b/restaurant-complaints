@@ -25,7 +25,6 @@
 
         <div style="margin-bottom:16px;">
             {{ form.employee_name.label_tag }}{{ form.employee_name }}
-            {% if form.employee_name.help_text %}<p style="color:var(--text-muted);font-size:0.85rem;margin-top:-4px;">{{ form.employee_name.help_text }}</p>{% endif %}
             {% for error in form.employee_name.errors %}<p style="color:var(--danger);font-size:0.85rem;">{{ error }}</p>{% endfor %}
         </div>
 
@@ -58,17 +57,42 @@
             <div id="serving-speed-display" style="font-size:1.3rem;font-weight:700;color:var(--maroon);">-</div>
         </div>
 
-        {{ form.product_complaint_notes.label_tag }}{{ form.product_complaint_notes }}
-        {{ form.service_complaint_notes.label_tag }}{{ form.service_complaint_notes }}
-
         <h3 style="margin-top:24px;">Rating Penilaian (1-5 Bintang)</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:12px;">
+
+        <div style="margin-top:16px;">
             <div class="star-rating-group" data-field="rating_food_quality" data-label="Kualitas Makanan"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.food_quality_notes }}
+            </div>
+
             <div class="star-rating-group" data-field="rating_product_appearance" data-label="Tampilan Produk"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.product_appearance_notes }}
+            </div>
+
             <div class="star-rating-group" data-field="rating_facility_comfort" data-label="Fasilitas/Kenyamanan"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.facility_comfort_notes }}
+            </div>
+
             <div class="star-rating-group" data-field="rating_cleanliness" data-label="Kebersihan"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.cleanliness_notes }}
+            </div>
+
             <div class="star-rating-group" data-field="rating_serving_speed" data-label="Kecepatan Penyajian"></div>
-            <div class="star-rating-group" data-field="rating_staff_service" data-label="Pelayanan Staff"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.serving_speed_notes }}
+            </div>
+
+            <div class="star-rating-group" data-field="rating_staff_service" data-label="Keramahan Kasir/Staff (5S)"></div>
+            <div style="margin-top:8px;margin-bottom:24px;">
+                {{ form.staff_service_notes }}
+            </div>
+        </div>
+
+        <div style="margin-top:8px;">
+            {{ form.additional_notes.label_tag }}{{ form.additional_notes }}
         </div>
 
         <div style="margin-top:24px;">

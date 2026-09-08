@@ -437,16 +437,26 @@ class OutletVisit(models.Model):
     order_time = models.DateTimeField('Tgl & Jam Order Makanan (sesuai struk)')
     food_ready_time = models.DateTimeField('Tgl & Jam Makanan Tersedia')
 
-    product_complaint_notes = models.TextField('Komplain Produk', blank=True)
-    service_complaint_notes = models.TextField('Komplain Servis', blank=True)
-
-    # --- Rating bintang 1-5 untuk tiap aspek penilaian ---
+    # --- Rating bintang 1-5 + catatan penjelasan untuk tiap aspek penilaian ---
     rating_food_quality = models.PositiveSmallIntegerField('Rating: Kualitas Makanan')
+    food_quality_notes = models.TextField('Catatan: Kualitas Makanan', blank=True)
+
     rating_product_appearance = models.PositiveSmallIntegerField('Rating: Tampilan Produk')
+    product_appearance_notes = models.TextField('Catatan: Tampilan Produk', blank=True)
+
     rating_facility_comfort = models.PositiveSmallIntegerField('Rating: Fasilitas/Kenyamanan')
+    facility_comfort_notes = models.TextField('Catatan: Fasilitas/Kenyamanan', blank=True)
+
     rating_cleanliness = models.PositiveSmallIntegerField('Rating: Kebersihan')
+    cleanliness_notes = models.TextField('Catatan: Kebersihan', blank=True)
+
     rating_serving_speed = models.PositiveSmallIntegerField('Rating: Kecepatan Penyajian')
-    rating_staff_service = models.PositiveSmallIntegerField('Rating: Pelayanan Staff')
+    serving_speed_notes = models.TextField('Catatan: Kecepatan Penyajian', blank=True)
+
+    rating_staff_service = models.PositiveSmallIntegerField('Rating: Keramahan Kasir/Staff (5S)')
+    staff_service_notes = models.TextField('Catatan: Keramahan Kasir/Staff (5S)', blank=True)
+
+    additional_notes = models.TextField('Keterangan Tambahan', blank=True)
 
     created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
 

@@ -241,14 +241,17 @@ class OutletVisitForm(forms.ModelForm):
         model = OutletVisit
         fields = [
             'employee_name', 'branch', 'selfie_photo', 'order_time', 'food_ready_time',
-            'product_complaint_notes', 'service_complaint_notes',
-            'rating_food_quality', 'rating_product_appearance',
-            'rating_facility_comfort', 'rating_cleanliness',
-            'rating_serving_speed', 'rating_staff_service',
+            'rating_food_quality', 'food_quality_notes',
+            'rating_product_appearance', 'product_appearance_notes',
+            'rating_facility_comfort', 'facility_comfort_notes',
+            'rating_cleanliness', 'cleanliness_notes',
+            'rating_serving_speed', 'serving_speed_notes',
+            'rating_staff_service', 'staff_service_notes',
+            'additional_notes',
         ]
         widgets = {
             'employee_name': forms.TextInput(attrs={
-                'class': 'form-control', 'placeholder': 'Nama karyawan outlet yang dinilai'}),
+                'class': 'form-control', 'placeholder': 'Team Office yang visit'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
             'selfie_photo': forms.ClearableFileInput(attrs={
                 'class': 'form-control', 'accept': 'image/*', 'capture': 'user',
@@ -258,18 +261,26 @@ class OutletVisitForm(forms.ModelForm):
                 'class': 'form-control', 'type': 'datetime-local'}),
             'food_ready_time': forms.DateTimeInput(attrs={
                 'class': 'form-control', 'type': 'datetime-local'}),
-            'product_complaint_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 3,
-                'placeholder': 'Kosongkan jika tidak ada komplain produk'}),
-            'service_complaint_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 3,
-                'placeholder': 'Kosongkan jika tidak ada komplain servis'}),
             'rating_food_quality': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_product_appearance': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_facility_comfort': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_cleanliness': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_serving_speed': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_staff_service': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
+            'food_quality_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'product_appearance_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'facility_comfort_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'cleanliness_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'serving_speed_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'staff_service_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+            'additional_notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan tambahan (opsional)'}),
         }
         labels = {
             'employee_name': 'Nama Karyawan',
@@ -277,14 +288,19 @@ class OutletVisitForm(forms.ModelForm):
             'selfie_photo': 'Foto Selfi',
             'order_time': 'Tgl & Jam Order Makanan (sesuai struk)',
             'food_ready_time': 'Tgl & Jam Makanan Tersedia',
-            'product_complaint_notes': 'Komplain Produk',
-            'service_complaint_notes': 'Komplain Servis',
             'rating_food_quality': 'Kualitas Makanan',
+            'food_quality_notes': 'Catatan',
             'rating_product_appearance': 'Tampilan Produk',
+            'product_appearance_notes': 'Catatan',
             'rating_facility_comfort': 'Fasilitas/Kenyamanan',
+            'facility_comfort_notes': 'Catatan',
             'rating_cleanliness': 'Kebersihan',
+            'cleanliness_notes': 'Catatan',
             'rating_serving_speed': 'Kecepatan Penyajian',
-            'rating_staff_service': 'Pelayanan Staff',
+            'serving_speed_notes': 'Catatan',
+            'rating_staff_service': 'Keramahan Kasir/Staff (5S)',
+            'staff_service_notes': 'Catatan',
+            'additional_notes': 'Keterangan Tambahan',
         }
 
     def __init__(self, *args, **kwargs):
