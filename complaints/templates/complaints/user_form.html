@@ -91,7 +91,7 @@
     function toggleFields() {
         var role = roleField.value;
         branchWrapper.style.display = (role === 'staff') ? '' : 'none';
-        cityWrapper.style.display = (role === 'manager' || role === 'qc_trainer') ? '' : 'none';
+        cityWrapper.style.display = (role === 'manager' || role === 'qc_trainer' || role === 'qc_office') ? '' : 'none';
     }
 
     if (roleField) {
