@@ -13,9 +13,6 @@ from .models import Complaint, ComplaintTimelineEntry, StaffProfile
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# Lacak perubahan status untuk membuat entri timeline & memicu notifikasi
-# =============================================================================
 @receiver(pre_save, sender=Complaint)
 def _stash_old_status(sender, instance, **kwargs):
     if instance.pk:
@@ -29,6 +26,11 @@ def _stash_old_status(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Complaint)
 def notify_on_complaint_change(sender, instance, created, **kwargs):
+    # Sinkron ke Google Sheets (backup lengkap 31 kolom) SETIAP kali komplain
+    # disimpan -- baik baru dibuat maupun diubah (update/upsert berdasarkan
+    # Kode, bukan cuma sekali saat Deadline lewat seperti sebelumnya).
+    sync_to_google_sheets(instance)
+
     old_status = getattr(instance, '_old_status', None)
 
     if created:
@@ -47,11 +49,11 @@ def notify_on_complaint_change(sender, instance, created, **kwargs):
         # (email/WhatsApp) saat status komplain berubah.
 
 
-# =============================================================================
-# Notifikasi EMAIL (development: console backend, ganti ke SMTP di produksi)
-# =============================================================================
 def send_new_complaint_notifications(complaint):
-    # 1) Konfirmasi ke pelanggan
+    # Kirim data ke sheet "Rekap" (Kota/Outlet/Komplain Produk/Komplain Servis)
+    # SETIAP ada komplain baru -- otomatis nambah 1 ke kolom yang sesuai.
+    sync_to_rekap_sheet(complaint)
+
     if complaint.customer_email:
         try:
             send_mail(
@@ -71,7 +73,6 @@ def send_new_complaint_notifications(complaint):
         except Exception:
             logger.exception('Gagal mengirim email konfirmasi ke pelanggan untuk %s', complaint.code)
 
-    # 2) Notifikasi ke PIC/Staff outlet terkait
     staff_emails = list(
         complaint.branch.staff_members.filter(
             is_active_pic=True
@@ -103,11 +104,8 @@ def send_new_complaint_notifications(complaint):
         to_staff=True,
     )
 
-    # Jeda supaya tidak kena rate limit provider WhatsApp (mis. Fonnte
-    # membatasi 1 pesan/5 detik untuk SELURUH akun, bukan hanya per fungsi).
     time.sleep(6)
 
-    # 3) Notifikasi ke WhatsApp QC/Trainer di kota outlet terkait
     notify_qc_trainers(
         complaint,
         f'[BARU] Komplain baru {complaint.code} masuk di {complaint.branch.name} '
@@ -119,11 +117,6 @@ def send_new_complaint_notifications(complaint):
     )
 
 
-# =============================================================================
-# Notifikasi WHATSAPP via Fonnte (https://fonnte.com)
-# Kalau ingin pindah ke provider lain (TextMeBot, Twilio, WA Cloud API resmi,
-# dll), sesuaikan format request di bawah ini dengan dokumentasi provider itu.
-# =============================================================================
 def send_whatsapp_message(phone_number, message, log_ref=''):
     """Fungsi generik: kirim satu pesan WhatsApp ke satu nomor tertentu."""
     if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
@@ -133,8 +126,6 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
     if not phone_number:
         return
 
-    # Fonnte butuh format nomor internasional TANPA tanda "+" (mis. 628123456789).
-    # Ubah otomatis dari format lokal "08..." kalau perlu.
     normalized_phone = phone_number.strip().replace(' ', '').replace('-', '')
     if normalized_phone.startswith('0'):
         normalized_phone = '62' + normalized_phone[1:]
@@ -142,7 +133,7 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
         normalized_phone = normalized_phone[1:]
 
     try:
-        import requests  # import lokal agar tidak wajib terpasang jika fitur nonaktif
+        import requests
         response = requests.post(
             settings.WHATSAPP_API_URL,
             headers={'Authorization': settings.WHATSAPP_API_TOKEN},
@@ -155,7 +146,6 @@ def send_whatsapp_message(phone_number, message, log_ref=''):
 
 
 def send_whatsapp_notification(complaint, message, to_staff=False):
-    """Kirim WhatsApp terkait komplain: ke Staff/PIC outlet (to_staff=True) atau ke pelanggan."""
     phone_number = None
     if to_staff:
         first_pic = complaint.branch.staff_members.filter(is_active_pic=True).first()
@@ -168,8 +158,6 @@ def send_whatsapp_notification(complaint, message, to_staff=False):
 
 
 def notify_qc_trainers(complaint, message):
-    """Kirim WhatsApp ke SEMUA QC/Trainer yang cakupan kotanya sama dengan
-    kota outlet komplain ini."""
     city = complaint.branch.city if complaint.branch else None
     if not city:
         logger.info(
@@ -184,17 +172,11 @@ def notify_qc_trainers(complaint, message):
 
     for index, profile in enumerate(qc_trainers):
         if index > 0:
-            # Fonnte (dan kebanyakan provider WhatsApp API sejenis) membatasi
-            # kecepatan pengiriman (mis. 1 pesan / 5 detik) untuk mencegah nomor
-            # diblokir WhatsApp. Beri jeda supaya pesan ke penerima berikutnya
-            # tidak ditolak karena terlalu cepat.
             time.sleep(6)
         send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> QC/Trainer {profile.user}')
 
 
 def notify_branch_pics(complaint, message):
-    """Kirim WhatsApp ke SEMUA Leader Outlet (Staff/PIC) aktif di outlet
-    komplain ini."""
     if not complaint.branch:
         return
 
@@ -204,3 +186,88 @@ def notify_branch_pics(complaint, message):
         if index > 0:
             time.sleep(6)
         send_whatsapp_message(profile.phone, message, log_ref=f'{complaint.code} -> Leader Outlet {profile.user}')
+
+
+# =============================================================================
+# Backup otomatis ke GOOGLE SHEETS via Google Apps Script Web App
+# =============================================================================
+def sync_to_google_sheets(complaint):
+    """Kirim satu baris data komplain ke Google Sheets (backup), dengan kolom
+    PERSIS SAMA dengan export Excel. Gagal secara diam-diam (dicatat di log
+    saja) supaya tidak pernah mengganggu alur utama kalau Google Sheets
+    sedang bermasalah."""
+    webhook_url = getattr(settings, 'GOOGLE_SHEETS_WEBHOOK_URL', '')
+    if not webhook_url:
+        logger.info('[Google Sheets] GOOGLE_SHEETS_WEBHOOK_URL kosong, backup untuk %s dilewati.', complaint.code)
+        return
+
+    def _fmt(dt):
+        return timezone.localtime(dt).strftime('%d-%m-%Y %H:%M') if dt else ''
+
+    payload = {
+        'kode': complaint.code,
+        'nama_pelanggan': complaint.customer_name,
+        'no_hp': complaint.customer_phone,
+        'email': complaint.customer_email,
+        'kota': complaint.branch.city.name if complaint.branch and complaint.branch.city else '',
+        'outlet': complaint.branch.name if complaint.branch else '',
+        'no_meja': complaint.table_number,
+        'tanggal_kunjungan': complaint.visit_date.strftime('%d-%m-%Y') if complaint.visit_date else '',
+        'no_pesanan': complaint.order_number,
+        'sumber_komplain': str(complaint.source) if complaint.source else '',
+        'jam_komplain_masuk': _fmt(complaint.customer_complaint_time),
+        'jam_ditangani_cs': _fmt(complaint.cs_handled_time),
+        'jenis_komplain': complaint.get_category_display(),
+        'rincian_komplain': complaint.detail_item.name if complaint.detail_item else '',
+        'tingkat_keparahan': complaint.get_severity_display(),
+        'status': complaint.get_status_display(),
+        'deskripsi': complaint.description,
+        'ditangani_oleh': str(complaint.assigned_to) if complaint.assigned_to else '',
+        'akar_masalah': complaint.resolution_notes,
+        'akar_masalah_diisi_pada': _fmt(complaint.resolution_notes_filled_at),
+        'solusi': complaint.internal_notes,
+        'solusi_diisi_pada': _fmt(complaint.internal_notes_filled_at),
+        'quality_alert': complaint.quality_alert,
+        'quality_alert_diisi_pada': _fmt(complaint.quality_alert_filled_at),
+        'validasi': complaint.validation_notes,
+        'validasi_diisi_pada': _fmt(complaint.validation_notes_filled_at),
+        'dilaporkan_pada': _fmt(complaint.created_at),
+        'batas_deadline': _fmt(complaint.sla_deadline),
+        'lewat_deadline': 'Ya' if complaint.is_overdue else 'Tidak',
+        'selesai_pada': _fmt(complaint.resolved_at),
+        'rating_kepuasan': complaint.satisfaction_rating,
+        'masukan_tambahan': complaint.satisfaction_feedback,
+    }
+
+    try:
+        import requests
+        response = requests.post(webhook_url, json=payload, timeout=15)
+        logger.info('[Google Sheets] Respons backup untuk %s: %s', complaint.code, response.text[:300])
+    except Exception:
+        logger.exception('Gagal backup ke Google Sheets untuk %s', complaint.code)
+
+
+# =============================================================================
+# Sinkron REKAP (Kota/Outlet/Komplain Produk/Komplain Servis) via Google Apps
+# Script Web App terpisah -- terkirim SETIAP ada komplain baru (bukan cuma
+# saat Deadline lewat), otomatis menambah 1 ke kolom yang sesuai di sheet.
+# Sheet-nya sendiri otomatis reset ke 0 tiap tanggal 26 (diatur di Apps Script).
+# =============================================================================
+def sync_to_rekap_sheet(complaint):
+    webhook_url = getattr(settings, 'GOOGLE_SHEETS_REKAP_WEBHOOK_URL', '')
+    if not webhook_url:
+        logger.info('[Google Sheets Rekap] GOOGLE_SHEETS_REKAP_WEBHOOK_URL kosong, sinkron untuk %s dilewati.', complaint.code)
+        return
+
+    payload = {
+        'kota': complaint.branch.city.name if complaint.branch and complaint.branch.city else '',
+        'outlet': complaint.branch.name if complaint.branch else '',
+        'jenis': 'produk' if complaint.category == Complaint.Category.PRODUK else 'servis',
+    }
+
+    try:
+        import requests
+        response = requests.post(webhook_url, json=payload, timeout=15)
+        logger.info('[Google Sheets Rekap] Respons untuk %s: %s', complaint.code, response.text[:300])
+    except Exception:
+        logger.exception('Gagal sinkron Rekap ke Google Sheets untuk %s', complaint.code)
