@@ -179,49 +179,72 @@
     document.getElementById('selfie-input').addEventListener('change', function (e) {
         var file = e.target.files[0];
         if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-            var img = new Image();
-            img.onload = function () {
-                var canvas = document.getElementById('selfie-canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                var ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
 
-                var now = new Date();
-                var tanggalJam = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ', ' + now.toLocaleTimeString('id-ID');
-                var lokasiText = 'Lokasi: tidak tersedia';
-                if (currentCoords) {
-                    lokasiText = 'Lokasi: ' + currentCoords.latitude.toFixed(5) + ', ' + currentCoords.longitude.toFixed(5);
+        // Pakai Object URL (bukan FileReader.readAsDataURL/base64) supaya
+        // tidak boros memori saat memuat foto beresolusi tinggi dari kamera HP.
+        var objectUrl = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+            URL.revokeObjectURL(objectUrl); // bebaskan memori setelah gambar dimuat
+
+            var canvas = document.getElementById('selfie-canvas');
+
+            // Kecilkan foto dulu kalau resolusinya sangat besar (kamera HP
+            // modern bisa 12MP+), supaya tidak kehabisan memori browser
+            // saat diproses di kanvas. 1280px sudah lebih dari cukup jelas
+            // untuk keperluan dokumentasi kunjungan.
+            var MAX_DIMENSION = 1280;
+            var width = img.width;
+            var height = img.height;
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                if (width > height) {
+                    height = Math.round(height * (MAX_DIMENSION / width));
+                    width = MAX_DIMENSION;
+                } else {
+                    width = Math.round(width * (MAX_DIMENSION / height));
+                    height = MAX_DIMENSION;
                 }
-                var lines = [tanggalJam, lokasiText];
-                var fontSize = Math.max(18, Math.round(canvas.width / 28));
-                ctx.font = fontSize + 'px Arial';
-                var lineHeight = fontSize + 8;
-                var padding = 14;
-                var boxHeight = lineHeight * lines.length + padding * 2;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
 
-                ctx.fillStyle = 'rgba(0,0,0,0.55)';
-                ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
+            var now = new Date();
+            var tanggalJam = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ', ' + now.toLocaleTimeString('id-ID');
+            var lokasiText = 'Lokasi: tidak tersedia';
+            if (currentCoords) {
+                lokasiText = 'Lokasi: ' + currentCoords.latitude.toFixed(5) + ', ' + currentCoords.longitude.toFixed(5);
+            }
+            var lines = [tanggalJam, lokasiText];
+            var fontSize = Math.max(18, Math.round(canvas.width / 28));
+            ctx.font = fontSize + 'px Arial';
+            var lineHeight = fontSize + 8;
+            var padding = 14;
+            var boxHeight = lineHeight * lines.length + padding * 2;
 
-                ctx.fillStyle = '#FFFFFF';
-                ctx.textBaseline = 'top';
-                lines.forEach(function (line, i) {
-                    ctx.fillText(line, padding, canvas.height - boxHeight + padding + i * lineHeight);
-                });
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
 
-                canvas.toBlob(function (blob) {
-                    selfieBlob = blob;
-                    var previewImg = document.getElementById('selfie-preview');
-                    previewImg.src = URL.createObjectURL(blob);
-                    previewImg.style.display = 'block';
-                    document.getElementById('selfie-status').textContent = 'Foto berhasil diambil (' + tanggalJam + ').';
-                }, 'image/jpeg', 0.9);
-            };
-            img.src = evt.target.result;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textBaseline = 'top';
+            lines.forEach(function (line, i) {
+                ctx.fillText(line, padding, canvas.height - boxHeight + padding + i * lineHeight);
+            });
+
+            canvas.toBlob(function (blob) {
+                selfieBlob = blob;
+                var previewImg = document.getElementById('selfie-preview');
+                previewImg.src = URL.createObjectURL(blob);
+                previewImg.style.display = 'block';
+                document.getElementById('selfie-status').textContent = 'Foto berhasil diambil (' + tanggalJam + ').';
+            }, 'image/jpeg', 0.85);
         };
-        reader.readAsDataURL(file);
+        img.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
+            document.getElementById('selfie-status').textContent = 'Gagal memuat foto. Coba ambil ulang.';
+        };
+        img.src = objectUrl;
     });
 
     document.getElementById('qc-visit-form').addEventListener('submit', function (e) {
