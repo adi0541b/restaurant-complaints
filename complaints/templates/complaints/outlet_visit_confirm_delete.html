@@ -1,0 +1,25 @@
+{% extends "complaints/base.html" %}
+{% block title %}Hapus Kunjungan Outlet - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1 style="color:var(--danger);">⚠️ Hapus Kunjungan Outlet</h1>
+    <p>Anda akan menghapus data kunjungan berikut secara <strong>permanen</strong>. Tindakan ini <strong>tidak bisa dibatalkan</strong>.</p>
+
+    <table style="margin:16px 0;">
+        <tr><th style="width:140px;">Tanggal</th><td>{{ visit.created_at|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>QC Office</th><td>{{ visit.qc_officer.get_full_name|default:visit.qc_officer.username }}</td></tr>
+        <tr><th>Nama Karyawan</th><td>{{ visit.employee_name|default:"-" }}</td></tr>
+        <tr><th>Outlet</th><td>{{ visit.branch.name }}</td></tr>
+        <tr><th>Kota</th><td>{{ visit.branch.city.name|default:"-" }}</td></tr>
+        <tr><th>Rating Rata-rata</th><td>⭐ {{ visit.rating_average }}</td></tr>
+    </table>
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:12px;margin-top:20px;">
+            <a href="{% url 'complaints:outlet_visit_detail' visit.pk %}" class="btn btn-outline" style="flex:1;text-align:center;">Batal</a>
+            <button type="submit" class="btn" style="flex:1;background:var(--danger);color:#fff;">Ya, Hapus Permanen</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -50,4 +50,10 @@
     </div>
     {% endif %}
 </div>
+
+{% if user.staff_profile.is_admin_pusat %}
+<div class="card">
+    <a href="{% url 'complaints:outlet_visit_delete' visit.pk %}" class="btn" style="background:var(--danger);color:#fff;">🗑️ Hapus Kunjungan</a>
+</div>
+{% endif %}
 {% endblock %}

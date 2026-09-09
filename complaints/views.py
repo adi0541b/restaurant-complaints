@@ -539,6 +539,23 @@ def complaint_delete(request, pk):
 
 
 # =============================================================================
+# HAPUS KUNJUNGAN OUTLET (QC Office) - HANYA Admin Pusat
+# =============================================================================
+@admin_pusat_required
+def outlet_visit_delete(request, pk):
+    visit = get_object_or_404(OutletVisit, pk=pk)
+
+    if request.method == 'POST':
+        outlet_name = visit.branch.name
+        tanggal = timezone.localtime(visit.created_at).strftime('%d-%m-%Y %H:%M')
+        visit.delete()
+        messages.success(request, f'Kunjungan ke outlet "{outlet_name}" ({tanggal}) berhasil dihapus.')
+        return redirect('complaints:outlet_visit_list')
+
+    return render(request, 'complaints/outlet_visit_confirm_delete.html', {'visit': visit})
+
+
+# =============================================================================
 # EXPORT KE EXCEL
 # =============================================================================
 @login_required
