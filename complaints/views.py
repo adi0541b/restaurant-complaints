@@ -213,6 +213,28 @@ def _visible_complaints_for(user):
     return qs.none()
 
 
+def _visible_qc_visits_for(user):
+    qs = OutletVisit.objects.select_related('branch', 'branch__city', 'qc_officer')
+    profile = getattr(user, 'staff_profile', None)
+    if profile is None:
+        return qs.none()
+
+    if profile.has_full_visibility:
+        return qs
+
+    if profile.is_manager or profile.is_qc_trainer:
+        if profile.city_id:
+            return qs.filter(branch__city=profile.city)
+        return qs.none()
+
+    if profile.is_staff_pic:
+        if profile.branch_id:
+            return qs.filter(branch=profile.branch)
+        return qs.none()
+
+    return qs.none()
+
+
 # =============================================================================
 # DASHBOARD (Staff / Manager / Admin Pusat)
 # =============================================================================
@@ -320,7 +342,7 @@ def dashboard(request):
     # filter Kota yang sama dengan Dashboard, tapi TIDAK terikat filter
     # Periode (supaya tetap terlihat kunjungan terbaru meski di luar rentang
     # tanggal yang sedang dipilih).
-    recent_qc_visits_qs = OutletVisit.objects.select_related('branch', 'branch__city', 'qc_officer')
+    recent_qc_visits_qs = _visible_qc_visits_for(request.user)
     if selected_city_id:
         recent_qc_visits_qs = recent_qc_visits_qs.filter(branch__city_id=selected_city_id)
     recent_qc_visits = recent_qc_visits_qs.order_by('-created_at')[:8]
@@ -1079,3 +1101,23 @@ def qc_office_visit(request):
         'recent_visits': recent_visits,
     }
     return render(request, 'complaints/qc_office_visit_form.html', context)
+
+
+# =============================================================================
+# DAFTAR & DETAIL KUNJUNGAN OUTLET (dilihat oleh Admin Pusat/Validator/Manager/
+# QC-Trainer dari Dashboard -- BUKAN halaman milik QC Office sendiri)
+# =============================================================================
+@login_required
+def outlet_visit_list(request):
+    qs = _visible_qc_visits_for(request.user).order_by('-created_at')
+
+    paginator = Paginator(qs, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'complaints/outlet_visit_list.html', {'page_obj': page_obj})
+
+
+@login_required
+def outlet_visit_detail(request, pk):
+    visit = get_object_or_404(_visible_qc_visits_for(request.user), pk=pk)
+    return render(request, 'complaints/outlet_visit_detail.html', {'visit': visit})

@@ -1,0 +1,39 @@
+{% extends "complaints/base.html" %}
+{% block title %}Daftar Kunjungan Outlet - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Daftar Kunjungan Outlet (QC Office)</h1>
+<p class="subtitle"><a href="{% url 'complaints:dashboard' %}">&larr; Kembali ke Dashboard</a></p>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr><th>Tanggal</th><th>QC Office</th><th>Nama Karyawan</th><th>Outlet</th><th>Kota</th><th>Kecepatan Penyajian</th><th>Rating Rata-rata</th></tr>
+        </thead>
+        <tbody>
+        {% for v in page_obj %}
+            <tr onclick="window.location='{% url 'complaints:outlet_visit_detail' v.pk %}'" style="cursor:pointer;">
+                <td>{{ v.created_at|date:"d M Y, H:i" }}</td>
+                <td>{{ v.qc_officer.get_full_name|default:v.qc_officer.username }}</td>
+                <td>{{ v.employee_name|default:"-" }}</td>
+                <td>{{ v.branch.name }}</td>
+                <td>{{ v.branch.city.name|default:"-" }}</td>
+                <td>{{ v.serving_speed_display }}</td>
+                <td>⭐ {{ v.rating_average }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7">Belum ada kunjungan QC Office.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}">&laquo; Sebelumnya</a>
+        {% endif %}
+        <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Selanjutnya &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

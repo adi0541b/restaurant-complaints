@@ -122,7 +122,6 @@
     <div style="margin-top:14px;"><a href="{% url 'complaints:complaint_list' %}" class="btn btn-outline">Lihat Semua Komplain</a></div>
 </div>
 
-{% if recent_qc_visits %}
 <div class="card">
     <h2>Kunjungan QC Office Terbaru</h2>
     <table>
@@ -131,7 +130,7 @@
         </thead>
         <tbody>
         {% for v in recent_qc_visits %}
-            <tr>
+            <tr onclick="window.location='{% url 'complaints:outlet_visit_detail' v.pk %}'" style="cursor:pointer;">
                 <td>{{ v.created_at|date:"d M Y, H:i" }}</td>
                 <td>{{ v.qc_officer.get_full_name|default:v.qc_officer.username }}</td>
                 <td>{{ v.employee_name|default:"-" }}</td>
@@ -145,8 +144,8 @@
         {% endfor %}
         </tbody>
     </table>
+    <div style="margin-top:14px;"><a href="{% url 'complaints:outlet_visit_list' %}" class="btn btn-outline">Lihat Semua Kunjungan</a></div>
 </div>
-{% endif %}
 
 {% if city_ranking|length > 1 %}
 <div class="card">

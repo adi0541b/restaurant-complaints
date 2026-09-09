@@ -1,0 +1,53 @@
+{% extends "complaints/base.html" %}
+{% block title %}Kunjungan Outlet - {{ visit.branch.name }} - {{ BRAND_NAME }}{% endblock %}
+{% block content %}
+<h1>Kunjungan Outlet</h1>
+<p class="subtitle"><a href="{% url 'complaints:outlet_visit_list' %}">&larr; Kembali ke Daftar Kunjungan</a></p>
+
+<div class="card">
+    <h2 style="margin-top:0;">Informasi Kunjungan</h2>
+    <table>
+        <tr><th style="width:200px;">Tanggal</th><td>{{ visit.created_at|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>QC Office</th><td>{{ visit.qc_officer.get_full_name|default:visit.qc_officer.username }}</td></tr>
+        <tr><th>Nama Karyawan</th><td>{{ visit.employee_name|default:"-" }}</td></tr>
+        <tr><th>Kota</th><td>{{ visit.branch.city.name|default:"-" }}</td></tr>
+        <tr><th>Outlet</th><td>{{ visit.branch.name }}</td></tr>
+        <tr><th>Foto Selfi</th><td><a href="{{ visit.selfie_photo.url }}" target="_blank"><img src="{{ visit.selfie_photo.url }}" style="max-width:280px;border-radius:8px;"></a></td></tr>
+        <tr><th>Jam Order Makanan</th><td>{{ visit.order_time|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Jam Makanan Tersedia</th><td>{{ visit.food_ready_time|date:"d M Y, H:i" }}</td></tr>
+        <tr><th>Kecepatan Penyajian</th><td><strong>{{ visit.serving_speed_display }}</strong></td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0;">Rating Penilaian</h2>
+    <table>
+        <tr><th style="width:280px;">Kualitas Makanan</th><td>⭐ {{ visit.rating_food_quality }}/5</td></tr>
+        {% if visit.food_quality_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.food_quality_notes }}</td></tr>{% endif %}
+
+        <tr><th>Tampilan Produk</th><td>⭐ {{ visit.rating_product_appearance }}/5</td></tr>
+        {% if visit.product_appearance_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.product_appearance_notes }}</td></tr>{% endif %}
+
+        <tr><th>Fasilitas/Kenyamanan</th><td>⭐ {{ visit.rating_facility_comfort }}/5</td></tr>
+        {% if visit.facility_comfort_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.facility_comfort_notes }}</td></tr>{% endif %}
+
+        <tr><th>Kebersihan</th><td>⭐ {{ visit.rating_cleanliness }}/5</td></tr>
+        {% if visit.cleanliness_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.cleanliness_notes }}</td></tr>{% endif %}
+
+        <tr><th>Kecepatan Penyajian (Rating)</th><td>⭐ {{ visit.rating_serving_speed }}/5</td></tr>
+        {% if visit.serving_speed_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.serving_speed_notes }}</td></tr>{% endif %}
+
+        <tr><th>Keramahan Kasir/Staff (5S)</th><td>⭐ {{ visit.rating_staff_service }}/5</td></tr>
+        {% if visit.staff_service_notes %}<tr><td colspan="2" style="color:var(--text-muted);">{{ visit.staff_service_notes }}</td></tr>{% endif %}
+
+        <tr><th>Rating Rata-rata</th><td><strong>⭐ {{ visit.rating_average }}</strong></td></tr>
+    </table>
+
+    {% if visit.additional_notes %}
+    <div style="margin-top:16px;">
+        <div style="font-weight:600;margin-bottom:4px;">Keterangan Tambahan</div>
+        <div style="white-space:pre-wrap;color:var(--text-muted);">{{ visit.additional_notes }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

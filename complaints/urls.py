@@ -21,6 +21,8 @@ urlpatterns = [
 
     # QC Office
     path('qc-office/kunjungan/', views.qc_office_visit, name='qc_office_visit'),
+    path('kunjungan-outlet/', views.outlet_visit_list, name='outlet_visit_list'),
+    path('kunjungan-outlet/<int:pk>/', views.outlet_visit_detail, name='outlet_visit_detail'),
 
     # Internal - Staff / Manager / Admin Pusat
     path('dashboard/', views.dashboard, name='dashboard'),
