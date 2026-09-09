@@ -32,6 +32,7 @@ from .models import (
     Branch, City, Complaint, ComplaintDetailItem, ComplaintSource,
     OutletVisit, SiteSettings, StaffProfile,
 )
+from .signals import send_whatsapp_message
 
 User = get_user_model()
 
@@ -1071,6 +1072,62 @@ def qc_office_required(view_func):
     return wrapper
 
 
+def send_qc_visit_whatsapp_report(visit):
+    """Kirim laporan hasil kunjungan (Informasi Kunjungan + Rating Penilaian)
+    via WhatsApp ke nomor QC Office yang bersangkutan sendiri, persis setelah
+    kunjungan disimpan."""
+    profile = getattr(visit.qc_officer, 'staff_profile', None)
+    phone = profile.phone if profile else ''
+    if not phone:
+        return
+
+    def _fmt(dt):
+        return timezone.localtime(dt).strftime('%d-%m-%Y %H:%M') if dt else '-'
+
+    lines = [
+        f'*LAPORAN KUNJUNGAN OUTLET*',
+        '',
+        '*Informasi Kunjungan*',
+        f'Tanggal: {_fmt(visit.created_at)}',
+        f'QC Office: {visit.qc_officer.get_full_name() or visit.qc_officer.username}',
+        f'Nama Karyawan: {visit.employee_name or "-"}',
+        f'Kota: {visit.branch.city.name if visit.branch.city else "-"}',
+        f'Outlet: {visit.branch.name}',
+        f'Jam Order Makanan: {_fmt(visit.order_time)}',
+        f'Jam Makanan Tersedia: {_fmt(visit.food_ready_time)}',
+        f'Kecepatan Penyajian: {visit.serving_speed_display}',
+        '',
+        '*Rating Penilaian*',
+        f'Kualitas Makanan: {visit.rating_food_quality}/5',
+    ]
+    if visit.food_quality_notes:
+        lines.append(f'  Catatan: {visit.food_quality_notes}')
+    lines.append(f'Tampilan Produk: {visit.rating_product_appearance}/5')
+    if visit.product_appearance_notes:
+        lines.append(f'  Catatan: {visit.product_appearance_notes}')
+    lines.append(f'Fasilitas/Kenyamanan: {visit.rating_facility_comfort}/5')
+    if visit.facility_comfort_notes:
+        lines.append(f'  Catatan: {visit.facility_comfort_notes}')
+    lines.append(f'Kebersihan: {visit.rating_cleanliness}/5')
+    if visit.cleanliness_notes:
+        lines.append(f'  Catatan: {visit.cleanliness_notes}')
+    lines.append(f'Kecepatan Penyajian (Rating): {visit.rating_serving_speed}/5')
+    if visit.serving_speed_notes:
+        lines.append(f'  Catatan: {visit.serving_speed_notes}')
+    lines.append(f'Keramahan Kasir/Staff (5S): {visit.rating_staff_service}/5')
+    if visit.staff_service_notes:
+        lines.append(f'  Catatan: {visit.staff_service_notes}')
+    lines.append('')
+    lines.append(f'*Rating Rata-rata: {visit.rating_average}*')
+
+    if visit.additional_notes:
+        lines.append('')
+        lines.append('*Keterangan Tambahan*')
+        lines.append(visit.additional_notes)
+
+    send_whatsapp_message(phone, '\n'.join(lines), log_ref=f'Laporan Kunjungan {visit.branch.name}')
+
+
 @qc_office_required
 def qc_office_visit(request):
     profile = request.user.staff_profile
@@ -1082,6 +1139,7 @@ def qc_office_visit(request):
             visit = form.save(commit=False)
             visit.qc_officer = request.user
             visit.save()
+            send_qc_visit_whatsapp_report(visit)
             messages.success(
                 request,
                 f'Kunjungan ke outlet "{visit.branch.name}" berhasil disimpan. '
