@@ -435,11 +435,13 @@ class CityAdminForm(forms.ModelForm):
 
     class Meta:
         model = City
-        fields = ['name', 'is_active']
+        fields = ['name', 'is_active', 'whatsapp_group_id']
         widgets = {
             'name': forms.TextInput(attrs={**ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: Jakarta'}),
+            'whatsapp_group_id': forms.TextInput(attrs={
+                **ADMIN_TEXT_ATTRS, 'placeholder': 'Contoh: 120363407734881049@g.us'}),
         }
-        labels = {'is_active': 'Kota Aktif'}
+        labels = {'is_active': 'Kota Aktif', 'whatsapp_group_id': 'ID Grup WhatsApp QC Report'}
 
 
 class BranchAdminForm(forms.ModelForm):

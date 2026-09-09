@@ -13,6 +13,12 @@ class City(models.Model):
     """Kota tempat outlet-outlet berada. Hanya Admin Pusat yang bisa menambah/mengubah."""
     name = models.CharField('Nama Kota', max_length=100, unique=True)
     is_active = models.BooleanField('Aktif', default=True)
+    whatsapp_group_id = models.CharField(
+        'ID Grup WhatsApp QC Report', max_length=100, blank=True,
+        help_text='Format: xxxxxxxxxxxxx@g.us (lihat cara mendapatkannya di dokumentasi Fonnte). '
+                   'Kosongkan kalau kota ini belum punya grup -- laporan kunjungan QC tidak akan '
+                   'dikirim ke grup mana pun untuk kota ini.',
+    )
     created_at = models.DateTimeField('Dibuat pada', auto_now_add=True)
 
     class Meta:

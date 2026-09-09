@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime, time, timedelta
 from functools import wraps
+from time import sleep as sleep_seconds
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, views as auth_views
@@ -1091,11 +1092,14 @@ def qc_office_required(view_func):
 
 def send_qc_visit_whatsapp_report(visit):
     """Kirim laporan hasil kunjungan (Informasi Kunjungan + Rating Penilaian)
-    via WhatsApp ke nomor QC Office yang bersangkutan sendiri, persis setelah
-    kunjungan disimpan."""
+    via WhatsApp ke (1) nomor QC Office yang bersangkutan sendiri, dan (2)
+    grup WhatsApp QC Report sesuai KOTA outlet yang dikunjungi (kalau sudah
+    diset di Panel Admin > Kelola Kota) -- persis setelah kunjungan disimpan."""
     profile = getattr(visit.qc_officer, 'staff_profile', None)
     phone = profile.phone if profile else ''
-    if not phone:
+    group_id = visit.branch.city.whatsapp_group_id if visit.branch.city else ''
+
+    if not phone and not group_id:
         return
 
     def _fmt(dt):
@@ -1142,7 +1146,15 @@ def send_qc_visit_whatsapp_report(visit):
         lines.append('*Keterangan Tambahan*')
         lines.append(visit.additional_notes)
 
-    send_whatsapp_message(phone, '\n'.join(lines), log_ref=f'Laporan Kunjungan {visit.branch.name}')
+    pesan = '\n'.join(lines)
+
+    if phone:
+        send_whatsapp_message(phone, pesan, log_ref=f'Laporan Kunjungan {visit.branch.name} -> QC pribadi')
+
+    if group_id:
+        if phone:
+            sleep_seconds(6)
+        send_whatsapp_message(group_id, pesan, log_ref=f'Laporan Kunjungan {visit.branch.name} -> Grup {visit.branch.city.name}')
 
 
 @qc_office_required
