@@ -1148,7 +1148,7 @@ def send_qc_visit_whatsapp_report(visit):
 
     lines.append('')
     lines.append(
-        f'Kepada *{visit.employee_name or "Yth. Karyawan"}*, tolong lengkapi dengan '
+        f'Kepada *{visit.employee_name or "Yth. Karyawan"}*, tolong lengkapi laporan ini dengan '
         f'foto struk kasir & foto-foto lainnya.'
     )
 
