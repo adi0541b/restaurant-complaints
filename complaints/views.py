@@ -1146,6 +1146,12 @@ def send_qc_visit_whatsapp_report(visit):
         lines.append('*Keterangan Tambahan*')
         lines.append(visit.additional_notes)
 
+    lines.append('')
+    lines.append(
+        f'Kepada {visit.employee_name or "Yth. Karyawan"}, tolong lengkapi laporan ini '
+        f'dengan Foto-foto dan penjelasan lainnya.'
+    )
+
     pesan = '\n'.join(lines)
 
     if phone:
