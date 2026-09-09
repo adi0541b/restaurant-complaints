@@ -268,17 +268,17 @@ class OutletVisitForm(forms.ModelForm):
             'rating_serving_speed': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'rating_staff_service': forms.RadioSelect(choices=[(i, str(i)) for i in range(5, 0, -1)]),
             'food_quality_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'product_appearance_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'facility_comfort_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'cleanliness_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'serving_speed_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'staff_service_notes': forms.Textarea(attrs={
-                'class': 'form-control', 'rows': 2, 'placeholder': 'Penjelasan (opsional)'}),
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Jelaskan penilaian Anda'}),
             'additional_notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan tambahan (opsional)'}),
         }
@@ -311,6 +311,13 @@ class OutletVisitForm(forms.ModelForm):
         else:
             self.fields['branch'].queryset = Branch.objects.none()
         self.fields['branch'].empty_label = '-- Pilih Outlet --'
+
+        # Penjelasan di bawah tiap rating bintang WAJIB diisi.
+        for field_name in [
+            'food_quality_notes', 'product_appearance_notes', 'facility_comfort_notes',
+            'cleanliness_notes', 'serving_speed_notes', 'staff_service_notes',
+        ]:
+            self.fields[field_name].required = True
 
 
 # =============================================================================
