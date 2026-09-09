@@ -75,6 +75,7 @@ class StaffProfile(models.Model):
         VALIDATOR = 'validator', 'Validator'
         MANAGER = 'manager', 'Manager Area'
         AREA_MANAGER = 'area_manager', 'Pusat'
+        HC = 'hc', 'HC'
         ADMIN = 'admin', 'Admin'
 
     user = models.OneToOneField(
@@ -121,6 +122,10 @@ class StaffProfile(models.Model):
     @property
     def is_manager(self):
         return self.role == self.Role.MANAGER
+
+    @property
+    def is_hc(self):
+        return self.role == self.Role.HC
 
     @property
     def is_staff_pic(self):

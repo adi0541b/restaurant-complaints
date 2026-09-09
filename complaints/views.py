@@ -200,7 +200,7 @@ def _visible_complaints_for(user):
         # Admin Pusat, Manager Wilayah, dan Staff Input Komplain melihat SEMUA outlet.
         return qs
 
-    if profile.is_manager or profile.is_qc_trainer:
+    if profile.is_manager or profile.is_qc_trainer or profile.is_hc:
         # Manager Kota & QC/Trainer: semua outlet yang berada di kota yang sama.
         if profile.city_id:
             return qs.filter(branch__city=profile.city)
@@ -224,7 +224,7 @@ def _visible_qc_visits_for(user):
     if profile.has_full_visibility:
         return qs
 
-    if profile.is_manager or profile.is_qc_trainer:
+    if profile.is_manager or profile.is_qc_trainer or profile.is_hc:
         if profile.city_id:
             return qs.filter(branch__city=profile.city)
         return qs.none()
@@ -1148,7 +1148,7 @@ def send_qc_visit_whatsapp_report(visit):
 
     lines.append('')
     lines.append(
-        f'Kepada *{visit.employee_name or "Yth. Karyawan"}*, tolong lengkapi laporan ini dengan '
+        f'Kepada *{visit.employee_name or "Yth. Karyawan"}*, tolong lengkapi dengan '
         f'foto struk kasir & foto-foto lainnya.'
     )
 
