@@ -262,6 +262,19 @@
             alert('Silakan ambil foto selfi terlebih dahulu (tunggu proses overlay tanggal/jam/lokasi selesai).');
             return;
         }
+
+        var submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            if (submitBtn.dataset.submitted === '1') {
+                // Sudah pernah disubmit sebelumnya, cegah kirim ulang.
+                e.preventDefault();
+                return;
+            }
+            submitBtn.dataset.submitted = '1';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+        }
+
         // Ganti file asli di input dengan versi yang sudah diberi overlay
         var dt = new DataTransfer();
         var file = new File([selfieBlob], 'selfie_' + Date.now() + '.jpg', { type: 'image/jpeg' });

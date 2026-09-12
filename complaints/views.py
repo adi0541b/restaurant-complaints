@@ -1148,7 +1148,7 @@ def send_qc_visit_whatsapp_report(visit):
 
     lines.append('')
     lines.append(
-        f'Laporan Kunjungan ini nanti akan *{visit.employee_name or "Yth. Karyawan"}* lengkapi dengan '
+        f'Kepada *{visit.employee_name or "Yth. Karyawan"}*, tolong lengkapi dengan '
         f'foto struk kasir & foto-foto lainnya.'
     )
 
@@ -1171,6 +1171,27 @@ def qc_office_visit(request):
     if request.method == 'POST':
         form = OutletVisitForm(request.POST, request.FILES, city=city)
         if form.is_valid():
+            # Pengaman anti-submit-ganda: kalau kunjungan dengan QC Office,
+            # Outlet, dan jam order/penyajian YANG SAMA baru saja disimpan
+            # dalam 60 detik terakhir, anggap ini submit ganda -- jangan
+            # buat data baru / kirim WhatsApp lagi, cukup arahkan balik.
+            batas_duplikat = timezone.now() - timedelta(seconds=60)
+            duplikat = OutletVisit.objects.filter(
+                qc_officer=request.user,
+                branch=form.cleaned_data['branch'],
+                order_time=form.cleaned_data['order_time'],
+                food_ready_time=form.cleaned_data['food_ready_time'],
+                created_at__gte=batas_duplikat,
+            ).exists()
+
+            if duplikat:
+                messages.warning(
+                    request,
+                    'Kunjungan ini sudah tersimpan sebelumnya (terdeteksi submit ganda). '
+                    'Data tidak disimpan dua kali.'
+                )
+                return redirect('complaints:qc_office_visit')
+
             visit = form.save(commit=False)
             visit.qc_officer = request.user
             visit.save()
