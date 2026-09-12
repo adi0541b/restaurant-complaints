@@ -147,6 +147,22 @@
     <div style="margin-top:14px;"><a href="{% url 'complaints:outlet_visit_list' %}" class="btn btn-outline">Lihat Semua Kunjungan</a></div>
 </div>
 
+{{ outlet_rating_ranking|json_script:"outlet-rating-ranking-data" }}
+{% if outlet_rating_ranking|length > 1 %}
+<div class="card">
+    <h2>Ranking Rating Outlet (QC Office)</h2>
+    <canvas id="outletRatingChart" height="180" style="margin-top:16px;"></canvas>
+    <table style="margin-top:16px;">
+        <thead><tr><th style="width:60px;">#</th><th>Outlet</th><th>Rating Rata-rata</th><th>Jumlah Kunjungan QC</th></tr></thead>
+        <tbody>
+        {% for row in outlet_rating_ranking %}
+            <tr><td>{{ forloop.counter }}</td><td>{{ row.name }}</td><td>⭐ {{ row.rating }}</td><td>{{ row.jumlah_visit }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 {% if city_ranking|length > 1 %}
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -250,6 +266,41 @@
 
         renderRankingChart('total');
         renderCityRankingChart('total');
+        renderOutletRatingChart();
+    }
+
+    function renderOutletRatingChart() {
+        const dataEl = document.getElementById('outlet-rating-ranking-data');
+        if (!dataEl || typeof Chart === 'undefined') return;
+        const rawData = JSON.parse(dataEl.textContent);
+        if (!rawData || rawData.length === 0) return;
+
+        const top = rawData.slice(0, 10);
+        const labels = top.map(r => r.name);
+        const ratings = top.map(r => r.rating);
+        const visitCounts = top.map(r => r.jumlah_visit);
+
+        new Chart(document.getElementById('outletRatingChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'Rating Rata-rata', data: ratings, backgroundColor: '#C9A227' }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function (context) {
+                                return 'Jumlah Kunjungan QC: ' + visitCounts[context.dataIndex];
+                            }
+                        }
+                    }
+                },
+                scales: { x: { beginAtZero: true, max: 5 } }
+            }
+        });
     }
 
     let rankingChartInstance = null;

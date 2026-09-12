@@ -349,6 +349,30 @@ def dashboard(request):
         recent_qc_visits_qs = recent_qc_visits_qs.filter(branch__city_id=selected_city_id)
     recent_qc_visits = recent_qc_visits_qs.order_by('-created_at')[:8]
 
+    # Ranking Rating Outlet (QC Office) -- rata-rata dari 6 aspek rating,
+    # diurutkan dari rating tertinggi, disertai jumlah kunjungan QC per outlet.
+    outlet_rating_qs = recent_qc_visits_qs.values('branch__name').annotate(
+        jumlah_visit=Count('id'),
+        avg_food=Avg('rating_food_quality'),
+        avg_appearance=Avg('rating_product_appearance'),
+        avg_facility=Avg('rating_facility_comfort'),
+        avg_cleanliness=Avg('rating_cleanliness'),
+        avg_speed=Avg('rating_serving_speed'),
+        avg_staff=Avg('rating_staff_service'),
+    )
+    outlet_rating_ranking = []
+    for row in outlet_rating_qs:
+        rata_rata = (
+            row['avg_food'] + row['avg_appearance'] + row['avg_facility']
+            + row['avg_cleanliness'] + row['avg_speed'] + row['avg_staff']
+        ) / 6
+        outlet_rating_ranking.append({
+            'name': row['branch__name'] or '-',
+            'rating': round(rata_rata, 2),
+            'jumlah_visit': row['jumlah_visit'],
+        })
+    outlet_rating_ranking.sort(key=lambda r: r['rating'], reverse=True)
+
     # ------------------------------------------------------------------
     # Data untuk grafik (Chart.js) di dashboard
     # ------------------------------------------------------------------
@@ -403,6 +427,7 @@ def dashboard(request):
         'city_ranking': city_ranking,
         'recent_complaints': recent_complaints,
         'recent_qc_visits': recent_qc_visits,
+        'outlet_rating_ranking': outlet_rating_ranking,
         'chart_data': chart_data,
         'available_cities': available_cities,
         'selected_city_id': selected_city_id,
